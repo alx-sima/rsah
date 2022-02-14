@@ -60,6 +60,11 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         graphics::clear(ctx, graphics::Color::BLACK);
+
+        if self.game_state != 0 {
+            draw_board(ctx)?;
+        }
+
         graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0],))?;
         graphics::present(ctx)
     }
@@ -96,4 +101,42 @@ fn main() {
         .unwrap();
 
     ggez::event::run(ctx, event_loop, state);
+}
+
+// Deseneaza tabla de joc
+// FIXME: deseneaza tabla in functie de dimensiunile ecranului
+fn draw_board(ctx: &mut ggez::Context) -> ggez::GameResult {
+    const L: f32 = 100.0;
+    let negru = graphics::Color::from_rgb(0, 0, 0);
+    let alb = graphics::Color::from_rgb(255, 255, 255);
+
+    let mesh = graphics::MeshBuilder::new()
+        .rectangle(
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(0.0, 0.0, L, L),
+            alb,
+        )?
+        .rectangle(
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(L, 0.0, L, L),
+            negru,
+        )?
+        .rectangle(
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(0.0, L, L, L),
+            negru,
+        )?
+        .rectangle(
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(L, L, L, L),
+            alb,
+        )?
+        .build(ctx)?;
+
+    for i in 0..4 {
+        for j in 0..4 {
+            graphics::draw(ctx, &mesh, ([j as f32 * 2.0 * L, i as f32 * 2.0 * L],))?;
+        }
+    }
+    Ok(())
 }
