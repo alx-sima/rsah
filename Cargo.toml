@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ggez = "^0.7.0"
+egui = "^0.15.0"
+ggez-egui = "^0.1.3"
