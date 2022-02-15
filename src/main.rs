@@ -10,7 +10,6 @@ enum GameState {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Piesa {
-    Empty,
     Pion,
     Tura,
     Cal,
@@ -19,9 +18,21 @@ enum Piesa {
     Rege,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum Culoare {
+    Negru,
+    Alb,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Patratel {
+    piesa: Piesa,
+    culoare: Culoare,
+}
+
 struct State {
     game_state: GameState,
-    tabla: [[Piesa; 8]; 8], // Tabla de joc
+    tabla: [[Option<Patratel>; 8]; 8], // Tabla de joc
     piesa_selectata: Piesa,
     egui_backend: EguiBackend,
 }
@@ -85,7 +96,6 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                             // TODO: help text pt editor
                         }
                         if ui.button("back").clicked() {
-                            self.piesa_selectata = Piesa::Empty;
                             self.game_state = GameState::MainMenu;
                         }
                     });
@@ -107,19 +117,36 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                     let cursor = ggez::input::mouse::position(ctx);
                     let x = cursor.x as usize / 100;
                     let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize] == Piesa::Empty {
-                        self.tabla[y as usize][x as usize] = self.piesa_selectata.clone();
+                    if self.tabla[y as usize][x as usize].is_none() {
+                        self.tabla[y as usize][x as usize] = Some(Patratel {
+                            piesa: self.piesa_selectata,
+                            culoare: Culoare::Alb,
+                        });
                         for i in self.tabla.iter() {
                             println!("{:?}", i);
                         }
+                    }
+                // la click-dreapta, amplaseaza piesa neagra
+                } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
+                    let cursor = ggez::input::mouse::position(ctx);
+                    let x = cursor.x as usize / 100;
+                    let y = cursor.y as usize / 100;
+                    if self.tabla[y as usize][x as usize].is_none() {
+                        self.tabla[y as usize][x as usize] = Some(Patratel {
+                            piesa: self.piesa_selectata,
+                            culoare: Culoare::Negru,
+                        });
+                    }
+                    for i in self.tabla.iter() {
+                        println!("{:?}", i);
                     }
                 // la click pe rotita, sterge pionul
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
                     let cursor = ggez::input::mouse::position(ctx);
                     let x = cursor.x as usize / 100;
                     let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize] != Piesa::Empty {
-                        self.tabla[y as usize][x as usize] = Piesa::Empty;
+                    if self.tabla[y as usize][x as usize].is_some() {
+                        self.tabla[y as usize][x as usize] = None;
                         for i in self.tabla.iter() {
                             println!("{:?}", i);
                         }
@@ -155,8 +182,8 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 fn main() {
     let state = State {
         game_state: GameState::MainMenu,
-        piesa_selectata: Piesa::Empty,
-        tabla: [[Piesa::Empty; 8]; 8],
+        piesa_selectata: Piesa::Pion,
+        tabla: [[None; 8]; 8],
         egui_backend: EguiBackend::default(),
     };
     let c = ggez::conf::Conf::new();
