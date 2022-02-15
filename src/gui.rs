@@ -1,6 +1,6 @@
 use ggez_egui::EguiContext;
 
-use crate::{Piesa, GameState, Culoare, State};
+use crate::{Culoare, GameState, Piesa, State};
 
 pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::Window::new("egui")
@@ -9,9 +9,13 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             if ui.button("START").clicked() {
                 game_state.turn = Culoare::Alb;
                 game_state.game_state = GameState::Game;
+                crate::t::generare_tabla(&mut game_state.tabla);
             }
             if ui.button("Editor").clicked() {
                 game_state.piesa_selectata = Piesa::Pion;
+                game_state.miscari_disponibile = vec![];
+                game_state.piesa_sel = None;
+                game_state.tabla = [[None; 8]; 8];
                 game_state.game_state = GameState::Editor;
             }
             if ui.button("Quit").clicked() {
@@ -31,10 +35,6 @@ pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
                 game_state.game_state = GameState::MainMenu;
             }
         });
-
-    for i in game_state.tabla {
-        println!("{:?}", i);
-    }
 }
 
 pub(crate) fn editor(game_state: &mut State, egui_ctx: &EguiContext) {

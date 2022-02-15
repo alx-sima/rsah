@@ -1,9 +1,13 @@
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
 
+mod draw;
 mod gui;
 mod miscari;
 mod t;
+
+/// Latura unui patratel de pe tabla de sah
+const L: f32 = 50.0;
 
 #[derive(PartialEq)]
 enum GameState {
@@ -24,20 +28,36 @@ enum Piesa {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Culoare {
-    Negru,
     Alb,
+    Negru,
+}
+
+#[derive(PartialEq)]
+enum MatchState {
+    Joc,
+    Sah,
+    Mat,
+    Pat,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct Patratel {
-    piesa: Piesa,
     culoare: Culoare,
+    piesa: Piesa,
 }
 
 struct State {
     game_state: GameState,
-    tabla: [[Option<Patratel>; 8]; 8], // Tabla de joc
-    turn: Culoare,                     // Al cui e randul
+    /// Tabla de joc
+    tabla: [[Option<Patratel>; 8]; 8],
+    /// Patratele disponibile
+    miscari_disponibile: Vec<(usize, usize)>,
+    /// Al cui e randul
+    turn: Culoare,
+    match_state: MatchState,
+    /// Pozitia piesei pe care a fost dat click pt a se muta
+    /// (marcata cu un patrat verde)
+    piesa_sel: Option<(usize, usize)>,
     piesa_selectata: Piesa,
     egui_backend: EguiBackend,
 }
@@ -64,28 +84,48 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         graphics::clear(ctx, graphics::Color::BLACK);
 
         if self.game_state != GameState::MainMenu {
-            draw_board(ctx)?;
-            draw_pieces(self, ctx)?;
+            draw::board(ctx)?;
+            draw::attack(self, ctx)?;
             if self.game_state == GameState::Game {
-                t::generare_tabla(&mut self.tabla);
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-                    if let Some((x, y)) = get_square_under_mouse(ctx) {
-                        if let Some(piesa) = self.tabla[y][x] {
-                            if self.turn == piesa.culoare {
-                                println!("{}, {}", x, y);
+                    println!("{:?}", self.miscari_disponibile);
+                    // Daca clickul este in interiorul tablei
+                    if let Some((j, i)) = get_square_under_mouse(ctx) {
+                        // Daca exista o piesa selectata
+                        if let Some((i_sel, j_sel)) = self.piesa_sel {
+                            // Patratul selectat
+                            let p_sel = self.tabla[i_sel][j_sel];
+                            if self.miscari_disponibile.contains(&(i, j)) {
+                                self.tabla[i][j] = p_sel;
+                                self.tabla[i_sel][j_sel] = None;
+
                                 // Randul urmatorului jucator
-                                self.turn = if self.turn == Culoare::Alb {
-                                    Culoare::Negru
-                                } else {
-                                    Culoare::Alb
+                                self.turn = match self.turn {
+                                    Culoare::Alb => Culoare::Negru,
+                                    Culoare::Negru => Culoare::Alb,
                                 };
-                            } else {
-                                println!("nu e randul tau");
+                            }
+                            self.piesa_sel = None;
+                            self.miscari_disponibile = Vec::new();
+
+                        // ...daca nu, o selecteaza (daca e de aceeasi culoare)
+                        } else {
+                            if let Some(piesa) = self.tabla[i][j] {
+                                if self.turn == piesa.culoare {
+                                    self.piesa_sel = Some((i, j));
+                                    self.miscari_disponibile = miscari::get_miscari(
+                                        &self.tabla,
+                                        piesa.piesa,
+                                        i as i32,
+                                        j as i32,
+                                    );
+                                }
                             }
                         }
                     }
                 }
             }
+            draw::pieces(self, ctx)?;
 
             // TODO: draw curata codul de mai jos
             if self.game_state == GameState::Editor {
@@ -97,9 +137,6 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                 piesa: self.piesa_selectata,
                                 culoare: Culoare::Alb,
                             });
-                            for i in self.tabla.iter() {
-                                //println!("{:?}", i);
-                            }
                         }
                     }
                 // la click-dreapta, amplaseaza piesa neagra
@@ -111,18 +148,12 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                 culoare: Culoare::Negru,
                             });
                         }
-                        for i in self.tabla.iter() {
-                            println!("{:?}", i);
-                        }
                     }
                 // la click pe rotita, sterge pionul
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
                     if let Some((x, y)) = get_square_under_mouse(ctx) {
                         if self.tabla[y][x].is_some() {
                             self.tabla[y][x] = None;
-                            for i in self.tabla.iter() {
-                                println!("{:?}", i);
-                            }
                         }
                     }
                 }
@@ -155,11 +186,14 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
 fn main() {
     let state = State {
-        turn: Culoare::Alb,
+        egui_backend: EguiBackend::default(),
         game_state: GameState::MainMenu,
+        miscari_disponibile: Vec::new(),
+        match_state: MatchState::Joc,
+        piesa_sel: None,
         piesa_selectata: Piesa::Pion,
         tabla: [[None; 8]; 8],
-        egui_backend: EguiBackend::default(),
+        turn: Culoare::Alb,
     };
     let c = ggez::conf::Conf::new();
     let (ctx, event_loop) = ggez::ContextBuilder::new("rsah", "bamse")
@@ -170,73 +204,12 @@ fn main() {
     ggez::event::run(ctx, event_loop, state);
 }
 
-// Deseneaza tabla de joc
-// FIXME: deseneaza tabla in functie de dimensiunile ecranului
-fn draw_board(ctx: &mut ggez::Context) -> ggez::GameResult {
-    const L: f32 = 50.0;
-    // TODO: pune culorile din gosah?
-    let negru = graphics::Color::from_rgb(0, 0, 0);
-    let alb = graphics::Color::from_rgb(255, 255, 255);
-
-    let mesh = graphics::MeshBuilder::new()
-        .rectangle(
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(0.0, 0.0, L, L),
-            alb,
-        )?
-        .rectangle(
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(L, 0.0, L, L),
-            negru,
-        )?
-        .rectangle(
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(0.0, L, L, L),
-            negru,
-        )?
-        .rectangle(
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(L, L, L, L),
-            alb,
-        )?
-        .build(ctx)?;
-
-    for i in 0..4 {
-        for j in 0..4 {
-            graphics::draw(ctx, &mesh, ([j as f32 * 2.0 * L, i as f32 * 2.0 * L],))?;
-        }
-    }
-    //ggez::filesystem::print_all(ctx);
-    //let img = graphics::Image::new(ctx, "/images/alb/pion.png")?;
-    //graphics::draw(ctx, &img, ([0.0, 0.0],))?;
-    Ok(())
-}
-fn draw_pieces(state: &State,ctx: &mut ggez::Context) -> ggez::GameResult {
-    for i in 0..8 {
-        for j in 0..8 {
-            if let Some(patratel) = state.tabla[i][j] {
-                let img = graphics::Image::new(
-                    ctx,
-                    &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.piesa),
-                )?;
-                // FIXME: marimi mai ok
-                graphics::draw(
-                    ctx,
-                    &img,
-                    graphics::DrawParam::default()
-                        .dest([j as f32 * 50.0 + 5.0, i as f32 * 50.0 + 5.0])
-                        .scale([0.35, 0.35]),
-                )?;
-            }
-        }
-    }
-    Ok(())
-}
-// Returneaza coordonatele patratului unde se afla mouse-ul
+/// Returneaza coordonatele patratului unde se afla mouse-ul, sau
+/// None => mouse-ul nu se afla in tabla de sah
 fn get_square_under_mouse(ctx: &mut ggez::Context) -> Option<(usize, usize)> {
     let cursor = ggez::input::mouse::position(ctx);
-    let x = cursor.x as i32 / 50;
-    let y = cursor.y as i32 / 50;
+    let x = (cursor.x / L) as i32;
+    let y = (cursor.y / L) as i32;
     if t::in_board(x, y) {
         Some((x as usize, y as usize))
     } else {

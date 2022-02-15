@@ -1,8 +1,8 @@
 use crate::{Culoare, Patratel, Piesa};
 
-// genereaza o tabla clasica
+/// Genereaza o tabla de sah clasica
 pub(crate) fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8]) {
-    // pioni
+    // Pioni
     for i in 0..8 {
         tabla[1][i] = Some(Patratel {
             piesa: Piesa::Pion,
@@ -32,7 +32,7 @@ pub(crate) fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8]) {
             culoare: Culoare::Alb,
         });
     }
-    // restul de piese
+    // Restul de piese
     tabla[0][3] = Some(Patratel {
         piesa: Piesa::Regina,
         culoare: Culoare::Negru,
@@ -51,11 +51,16 @@ pub(crate) fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8]) {
     });
 }
 
-// verifica daca celula (x, y) intra in tabla de joc
-pub(crate) fn in_board(x: i32, y: i32) -> bool {
-    x >= 0 && x < 8 && y >= 0 && y < 8
+/// Verifica daca celula (i, j) intra in tabla de joc
+pub(crate) fn in_board(i: i32, j: i32) -> bool {
+    i >= 0 && i < 8 && j >= 0 && j < 8
 }
 
-pub(crate) fn start_joc(tabla: &mut [[Option<Patratel>; 8]; 8]) {
-    generare_tabla(tabla);
+pub(crate) fn valid_moves(tabla: &[[Option<Patratel>; 8]; 8], miscari: Vec<(i32, i32)>, i: usize, j: usize) -> Vec<(i32, i32)> {
+    let mut rez = Vec::new();
+
+    for (i, j) in miscari {
+        
+    }
+    rez
 }
