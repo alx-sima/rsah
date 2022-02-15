@@ -1,6 +1,10 @@
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
+
+mod gui;
+mod miscari;
 mod t;
+
 #[derive(PartialEq)]
 enum GameState {
     MainMenu,
@@ -18,7 +22,7 @@ enum Piesa {
     Rege,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Culoare {
     Negru,
     Alb,
@@ -33,7 +37,7 @@ struct Patratel {
 struct State {
     game_state: GameState,
     tabla: [[Option<Patratel>; 8]; 8], // Tabla de joc
-    turn: Culoare, // Al cui e randul
+    turn: Culoare,                     // Al cui e randul
     piesa_selectata: Piesa,
     egui_backend: EguiBackend,
 }
@@ -44,67 +48,13 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         // FIXME: fixeaza meniul pe ecran
         match self.game_state {
             GameState::MainMenu => {
-                egui::Window::new("egui")
-                    .title_bar(false)
-                    .show(&egui_ctx, |ui| {
-                        if ui.button("START").clicked() {
-                            self.turn = Culoare::Alb;
-                            self.game_state = GameState::Game;
-                        }
-                        if ui.button("Editor").clicked() {
-                            self.piesa_selectata = Piesa::Pion;
-                            self.game_state = GameState::Editor;
-                        }
-                        if ui.button("Quit").clicked() {
-                            ggez::event::quit(ctx);
-                        }
-                    });
+                gui::main_menu(self, &egui_ctx, ctx);
             }
             GameState::Game => {
-                egui::Window::new("egui-game")
-                    .title_bar(false)
-                    .show(&egui_ctx, |ui| {
-                        if ui.button("help").clicked() {
-                            // TODO: help text pt joc
-                        }
-                        if ui.button("back").clicked() {
-                            self.game_state = GameState::MainMenu;
-                        }
-                    });
-                t::start_joc(&mut self.tabla);
-                for i in self.tabla {
-                    println!("{:?}", i);
-                }
+                gui::game(self, &egui_ctx);
             }
             GameState::Editor => {
-                egui::Window::new("egui-editor")
-                    .title_bar(false)
-                    .show(&egui_ctx, |ui| {
-                        egui::ComboBox::from_label("Piesa")
-                            .selected_text(format!("{:?}", self.piesa_selectata))
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Pion, "Pion");
-                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Tura, "Tura");
-                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Cal, "Cal");
-                                ui.selectable_value(
-                                    &mut self.piesa_selectata,
-                                    Piesa::Nebun,
-                                    "Nebun",
-                                );
-                                ui.selectable_value(
-                                    &mut self.piesa_selectata,
-                                    Piesa::Regina,
-                                    "Regina",
-                                );
-                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Rege, "Rege");
-                            });
-                        if ui.button("help").clicked() {
-                            // TODO: help text pt editor
-                        }
-                        if ui.button("back").clicked() {
-                            self.game_state = GameState::MainMenu;
-                        }
-                    });
+                gui::editor(self, &egui_ctx);
             }
         }
         Ok(())
@@ -115,46 +65,64 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
         if self.game_state != GameState::MainMenu {
             draw_board(ctx)?;
+            draw_pieces(self, ctx)?;
+            if self.game_state == GameState::Game {
+                t::generare_tabla(&mut self.tabla);
+                if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
+                    if let Some((x, y)) = get_square_under_mouse(ctx) {
+                        if let Some(piesa) = self.tabla[y][x] {
+                            if self.turn == piesa.culoare {
+                                println!("{}, {}", x, y);
+                                // Randul urmatorului jucator
+                                self.turn = if self.turn == Culoare::Alb {
+                                    Culoare::Negru
+                                } else {
+                                    Culoare::Alb
+                                };
+                            } else {
+                                println!("nu e randul tau");
+                            }
+                        }
+                    }
+                }
+            }
 
             // TODO: draw curata codul de mai jos
             if self.game_state == GameState::Editor {
                 // la un click, amplaseaza pionul
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-                    let cursor = ggez::input::mouse::position(ctx);
-                    let x = cursor.x as usize / 100;
-                    let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize].is_none() {
-                        self.tabla[y as usize][x as usize] = Some(Patratel {
-                            piesa: self.piesa_selectata,
-                            culoare: Culoare::Alb,
-                        });
-                        for i in self.tabla.iter() {
-                            println!("{:?}", i);
+                    if let Some((x, y)) = get_square_under_mouse(ctx) {
+                        if self.tabla[y][x].is_none() {
+                            self.tabla[y][x] = Some(Patratel {
+                                piesa: self.piesa_selectata,
+                                culoare: Culoare::Alb,
+                            });
+                            for i in self.tabla.iter() {
+                                //println!("{:?}", i);
+                            }
                         }
                     }
                 // la click-dreapta, amplaseaza piesa neagra
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
-                    let cursor = ggez::input::mouse::position(ctx);
-                    let x = cursor.x as usize / 100;
-                    let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize].is_none() {
-                        self.tabla[y as usize][x as usize] = Some(Patratel {
-                            piesa: self.piesa_selectata,
-                            culoare: Culoare::Negru,
-                        });
-                    }
-                    for i in self.tabla.iter() {
-                        println!("{:?}", i);
+                    if let Some((x, y)) = get_square_under_mouse(ctx) {
+                        if self.tabla[y][x].is_none() {
+                            self.tabla[y][x] = Some(Patratel {
+                                piesa: self.piesa_selectata,
+                                culoare: Culoare::Negru,
+                            });
+                        }
+                        for i in self.tabla.iter() {
+                            println!("{:?}", i);
+                        }
                     }
                 // la click pe rotita, sterge pionul
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
-                    let cursor = ggez::input::mouse::position(ctx);
-                    let x = cursor.x as usize / 100;
-                    let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize].is_some() {
-                        self.tabla[y as usize][x as usize] = None;
-                        for i in self.tabla.iter() {
-                            println!("{:?}", i);
+                    if let Some((x, y)) = get_square_under_mouse(ctx) {
+                        if self.tabla[y][x].is_some() {
+                            self.tabla[y][x] = None;
+                            for i in self.tabla.iter() {
+                                println!("{:?}", i);
+                            }
                         }
                     }
                 }
@@ -205,7 +173,8 @@ fn main() {
 // Deseneaza tabla de joc
 // FIXME: deseneaza tabla in functie de dimensiunile ecranului
 fn draw_board(ctx: &mut ggez::Context) -> ggez::GameResult {
-    const L: f32 = 100.0;
+    const L: f32 = 50.0;
+    // TODO: pune culorile din gosah?
     let negru = graphics::Color::from_rgb(0, 0, 0);
     let alb = graphics::Color::from_rgb(255, 255, 255);
 
@@ -241,4 +210,36 @@ fn draw_board(ctx: &mut ggez::Context) -> ggez::GameResult {
     //let img = graphics::Image::new(ctx, "/images/alb/pion.png")?;
     //graphics::draw(ctx, &img, ([0.0, 0.0],))?;
     Ok(())
+}
+fn draw_pieces(state: &State,ctx: &mut ggez::Context) -> ggez::GameResult {
+    for i in 0..8 {
+        for j in 0..8 {
+            if let Some(patratel) = state.tabla[i][j] {
+                let img = graphics::Image::new(
+                    ctx,
+                    &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.piesa),
+                )?;
+                // FIXME: marimi mai ok
+                graphics::draw(
+                    ctx,
+                    &img,
+                    graphics::DrawParam::default()
+                        .dest([j as f32 * 50.0 + 5.0, i as f32 * 50.0 + 5.0])
+                        .scale([0.35, 0.35]),
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+// Returneaza coordonatele patratului unde se afla mouse-ul
+fn get_square_under_mouse(ctx: &mut ggez::Context) -> Option<(usize, usize)> {
+    let cursor = ggez::input::mouse::position(ctx);
+    let x = cursor.x as i32 / 50;
+    let y = cursor.y as i32 / 50;
+    if t::in_board(x, y) {
+        Some((x as usize, y as usize))
+    } else {
+        None
+    }
 }

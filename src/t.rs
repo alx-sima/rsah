@@ -1,10 +1,9 @@
 use crate::{Culoare, Patratel, Piesa};
 
 // genereaza o tabla clasica
-fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8])
-{
+pub(crate) fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8]) {
     // pioni
-    for i in 0..8 { 
+    for i in 0..8 {
         tabla[1][i] = Some(Patratel {
             piesa: Piesa::Pion,
             culoare: Culoare::Negru,
@@ -50,6 +49,11 @@ fn generare_tabla(tabla: &mut [[Option<Patratel>; 8]; 8])
         piesa: Piesa::Rege,
         culoare: Culoare::Alb,
     });
+}
+
+// verifica daca celula (x, y) intra in tabla de joc
+pub(crate) fn in_board(x: i32, y: i32) -> bool {
+    x >= 0 && x < 8 && y >= 0 && y < 8
 }
 
 pub(crate) fn start_joc(tabla: &mut [[Option<Patratel>; 8]; 8]) {
