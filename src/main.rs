@@ -1,6 +1,6 @@
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
-
+mod t;
 #[derive(PartialEq)]
 enum GameState {
     MainMenu,
@@ -33,6 +33,7 @@ struct Patratel {
 struct State {
     game_state: GameState,
     tabla: [[Option<Patratel>; 8]; 8], // Tabla de joc
+    turn: Culoare, // Al cui e randul
     piesa_selectata: Piesa,
     egui_backend: EguiBackend,
 }
@@ -47,6 +48,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                     .title_bar(false)
                     .show(&egui_ctx, |ui| {
                         if ui.button("START").clicked() {
+                            self.turn = Culoare::Alb;
                             self.game_state = GameState::Game;
                         }
                         if ui.button("Editor").clicked() {
@@ -69,6 +71,10 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                             self.game_state = GameState::MainMenu;
                         }
                     });
+                t::start_joc(&mut self.tabla);
+                for i in self.tabla {
+                    println!("{:?}", i);
+                }
             }
             GameState::Editor => {
                 egui::Window::new("egui-editor")
@@ -181,6 +187,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
 fn main() {
     let state = State {
+        turn: Culoare::Alb,
         game_state: GameState::MainMenu,
         piesa_selectata: Piesa::Pion,
         tabla: [[None; 8]; 8],
@@ -230,5 +237,8 @@ fn draw_board(ctx: &mut ggez::Context) -> ggez::GameResult {
             graphics::draw(ctx, &mesh, ([j as f32 * 2.0 * L, i as f32 * 2.0 * L],))?;
         }
     }
+    //ggez::filesystem::print_all(ctx);
+    //let img = graphics::Image::new(ctx, "/images/alb/pion.png")?;
+    //graphics::draw(ctx, &img, ([0.0, 0.0],))?;
     Ok(())
 }
