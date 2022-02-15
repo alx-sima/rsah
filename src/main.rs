@@ -1,9 +1,28 @@
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
 
+#[derive(PartialEq)]
+enum GameState {
+    MainMenu,
+    Game,
+    Editor,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Piesa {
+    Empty,
+    Pion,
+    Tura,
+    Cal,
+    Nebun,
+    Regina,
+    Rege,
+}
+
 struct State {
-    game_state: u8,
-    tabla: [[u8; 8]; 8], // Tabla de joc
+    game_state: GameState,
+    tabla: [[Piesa; 8]; 8], // Tabla de joc
+    piesa_selectata: Piesa,
     egui_backend: EguiBackend,
 }
 
@@ -12,24 +31,23 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         let egui_ctx = self.egui_backend.ctx();
         // FIXME: fixeaza meniul pe ecran
         match self.game_state {
-            // Main menu
-            0 => {
+            GameState::MainMenu => {
                 egui::Window::new("egui")
                     .title_bar(false)
                     .show(&egui_ctx, |ui| {
                         if ui.button("START").clicked() {
-                            self.game_state = 1;
+                            self.game_state = GameState::Game;
                         }
                         if ui.button("Editor").clicked() {
-                            self.game_state = 2;
+                            self.piesa_selectata = Piesa::Pion;
+                            self.game_state = GameState::Editor;
                         }
                         if ui.button("Quit").clicked() {
                             ggez::event::quit(ctx);
                         }
                     });
             }
-            // Game
-            1 => {
+            GameState::Game => {
                 egui::Window::new("egui-game")
                     .title_bar(false)
                     .show(&egui_ctx, |ui| {
@@ -37,24 +55,41 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                             // TODO: help text pt joc
                         }
                         if ui.button("back").clicked() {
-                            self.game_state = 0;
+                            self.game_state = GameState::MainMenu;
                         }
                     });
             }
-            // Editor
-            2 => {
+            GameState::Editor => {
                 egui::Window::new("egui-editor")
                     .title_bar(false)
                     .show(&egui_ctx, |ui| {
+                        egui::ComboBox::from_label("Piesa")
+                            .selected_text(format!("{:?}", self.piesa_selectata))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Pion, "Pion");
+                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Tura, "Tura");
+                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Cal, "Cal");
+                                ui.selectable_value(
+                                    &mut self.piesa_selectata,
+                                    Piesa::Nebun,
+                                    "Nebun",
+                                );
+                                ui.selectable_value(
+                                    &mut self.piesa_selectata,
+                                    Piesa::Regina,
+                                    "Regina",
+                                );
+                                ui.selectable_value(&mut self.piesa_selectata, Piesa::Rege, "Rege");
+                            });
                         if ui.button("help").clicked() {
                             // TODO: help text pt editor
                         }
                         if ui.button("back").clicked() {
-                            self.game_state = 0;
+                            self.piesa_selectata = Piesa::Empty;
+                            self.game_state = GameState::MainMenu;
                         }
                     });
             }
-            _ => {}
         }
         Ok(())
     }
@@ -62,18 +97,18 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         graphics::clear(ctx, graphics::Color::BLACK);
 
-        if self.game_state != 0 {
+        if self.game_state != GameState::MainMenu {
             draw_board(ctx)?;
 
             // TODO: draw curata codul de mai jos
-            if self.game_state == 2 {
+            if self.game_state == GameState::Editor {
                 // la un click, amplaseaza pionul
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     let cursor = ggez::input::mouse::position(ctx);
                     let x = cursor.x as usize / 100;
                     let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize] == 0 {
-                        self.tabla[y as usize][x as usize] = 1;
+                    if self.tabla[y as usize][x as usize] == Piesa::Empty {
+                        self.tabla[y as usize][x as usize] = self.piesa_selectata.clone();
                         for i in self.tabla.iter() {
                             println!("{:?}", i);
                         }
@@ -83,8 +118,8 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                     let cursor = ggez::input::mouse::position(ctx);
                     let x = cursor.x as usize / 100;
                     let y = cursor.y as usize / 100;
-                    if self.tabla[y as usize][x as usize] != 0 {
-                        self.tabla[y as usize][x as usize] = 0;
+                    if self.tabla[y as usize][x as usize] != Piesa::Empty {
+                        self.tabla[y as usize][x as usize] = Piesa::Empty;
                         for i in self.tabla.iter() {
                             println!("{:?}", i);
                         }
@@ -119,8 +154,9 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
 fn main() {
     let state = State {
-        game_state: 0,
-        tabla: [[0; 8]; 8],
+        game_state: GameState::MainMenu,
+        piesa_selectata: Piesa::Empty,
+        tabla: [[Piesa::Empty; 8]; 8],
         egui_backend: EguiBackend::default(),
     };
     let c = ggez::conf::Conf::new();
