@@ -3,6 +3,7 @@ use ggez_egui::EguiBackend;
 
 struct State {
     game_state: u8,
+    tabla: [[u8; 8]; 8], // Tabla de joc
     egui_backend: EguiBackend,
 }
 
@@ -63,6 +64,33 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
         if self.game_state != 0 {
             draw_board(ctx)?;
+
+            // TODO: draw curata codul de mai jos
+            if self.game_state == 2 {
+                // la un click, amplaseaza pionul
+                if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
+                    let cursor = ggez::input::mouse::position(ctx);
+                    let x = cursor.x as usize / 100;
+                    let y = cursor.y as usize / 100;
+                    if self.tabla[y as usize][x as usize] == 0 {
+                        self.tabla[y as usize][x as usize] = 1;
+                        for i in self.tabla.iter() {
+                            println!("{:?}", i);
+                        }
+                    }
+                // la click pe rotita, sterge pionul
+                } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
+                    let cursor = ggez::input::mouse::position(ctx);
+                    let x = cursor.x as usize / 100;
+                    let y = cursor.y as usize / 100;
+                    if self.tabla[y as usize][x as usize] != 0 {
+                        self.tabla[y as usize][x as usize] = 0;
+                        for i in self.tabla.iter() {
+                            println!("{:?}", i);
+                        }
+                    }
+                }
+            }
         }
 
         graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0],))?;
@@ -92,6 +120,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 fn main() {
     let state = State {
         game_state: 0,
+        tabla: [[0; 8]; 8],
         egui_backend: EguiBackend::default(),
     };
     let c = ggez::conf::Conf::new();
