@@ -9,6 +9,7 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
     let negru = graphics::Color::from_rgb(0, 0, 0);
     let alb = graphics::Color::from_rgb(255, 255, 255);
 
+    // TODO: mesh mai scurt?
     let mesh = graphics::MeshBuilder::new()
         .rectangle(
             graphics::DrawMode::fill(),
@@ -32,6 +33,7 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
         )?
         .build(ctx)?;
 
+    // Aplica meshurile
     for i in 0..4 {
         for j in 0..4 {
             graphics::draw(ctx, &mesh, ([j as f32 * 2.0 * L, i as f32 * 2.0 * L],))?;
@@ -43,10 +45,10 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     for i in 0..8 {
         for j in 0..8 {
-            if let Some(patratel) = state.tabla[i][j] {
+            if let Some(patratel) = &state.tabla[i][j].piesa {
                 let img = graphics::Image::new(
                     ctx,
-                    &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.piesa),
+                    &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.tip),
                 )?;
                 // FIXME: marimi mai ok
                 graphics::draw(

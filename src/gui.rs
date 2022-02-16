@@ -1,6 +1,6 @@
 use ggez_egui::EguiContext;
 
-use crate::{Culoare, GameState, Piesa, State};
+use crate::{Culoare, GameState, Patratel, State, TipPiesa};
 
 pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::Window::new("egui")
@@ -9,13 +9,13 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             if ui.button("START").clicked() {
                 game_state.turn = Culoare::Alb;
                 game_state.game_state = GameState::Game;
-                crate::t::generare_tabla(&mut game_state.tabla);
+                crate::t::generare_tabla_clasic(&mut game_state.tabla);
             }
             if ui.button("Editor").clicked() {
-                game_state.piesa_selectata = Piesa::Pion;
+                game_state.piesa_selectata = TipPiesa::Pion;
                 game_state.miscari_disponibile = vec![];
                 game_state.piesa_sel = None;
-                game_state.tabla = [[None; 8]; 8];
+                game_state.tabla = crate::t::init_tabla();
                 game_state.game_state = GameState::Editor;
             }
             if ui.button("Quit").clicked() {
@@ -44,12 +44,16 @@ pub(crate) fn editor(game_state: &mut State, egui_ctx: &EguiContext) {
             egui::ComboBox::from_label("Piesa")
                 .selected_text(format!("{:?}", game_state.piesa_selectata))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Pion, "Pion");
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Tura, "Tura");
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Cal, "Cal");
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Nebun, "Nebun");
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Regina, "Regina");
-                    ui.selectable_value(&mut game_state.piesa_selectata, Piesa::Rege, "Rege");
+                    ui.selectable_value(&mut game_state.piesa_selectata, TipPiesa::Pion, "Pion");
+                    ui.selectable_value(&mut game_state.piesa_selectata, TipPiesa::Tura, "Tura");
+                    ui.selectable_value(&mut game_state.piesa_selectata, TipPiesa::Cal, "Cal");
+                    ui.selectable_value(&mut game_state.piesa_selectata, TipPiesa::Nebun, "Nebun");
+                    ui.selectable_value(
+                        &mut game_state.piesa_selectata,
+                        TipPiesa::Regina,
+                        "Regina",
+                    );
+                    ui.selectable_value(&mut game_state.piesa_selectata, TipPiesa::Rege, "Rege");
                 });
             if ui.button("help").clicked() {
                 // TODO: help text pt editor

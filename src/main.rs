@@ -17,7 +17,7 @@ enum GameState {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Piesa {
+enum TipPiesa {
     Pion,
     Tura,
     Cal,
@@ -40,16 +40,22 @@ enum MatchState {
     Pat,
 }
 
-#[derive(Clone, Copy, Debug)]
-struct Patratel {
+#[derive(Clone, Debug)]
+struct Piesa {
+    tip: TipPiesa,
     culoare: Culoare,
-    piesa: Piesa,
+}
+
+#[derive(Clone, Debug)]
+struct Patratel {
+    piesa: Option<Piesa>,
+    atacat: (Vec<(i32, i32)>, Vec<(i32, i32)>),
 }
 
 struct State {
     game_state: GameState,
     /// Tabla de joc
-    tabla: [[Option<Patratel>; 8]; 8],
+    tabla: [[Patratel; 8]; 8],
     /// Patratele disponibile
     miscari_disponibile: Vec<(usize, usize)>,
     /// Al cui e randul
@@ -58,7 +64,7 @@ struct State {
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
     piesa_sel: Option<(usize, usize)>,
-    piesa_selectata: Piesa,
+    piesa_selectata: TipPiesa,
     egui_backend: EguiBackend,
 }
 
@@ -90,14 +96,51 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     // Daca clickul este in interiorul tablei
                     if let Some((j, i)) = get_square_under_mouse(ctx) {
-                        // Daca exista o piesa selectata
-                        if let Some((i_sel, j_sel)) = self.piesa_sel {
-                            // Patratul selectat
-                            let p_sel = self.tabla[i_sel][j_sel];
+                        // Daca exista o piesa selectata...
+                        if let Some((i_old, j_old)) = self.piesa_sel {
+                            // Vechea pozitie a piesei
+                            let p_old = self.tabla[i_old][j_old].clone();
+                            // Noua pozitie a piesei
+                            let p_new = self.tabla[i][j].clone();
+                            // FIXME: sparge in fctii mai mici
                             if self.miscari_disponibile.contains(&(i, j)) {
-                                self.tabla[i][j] = p_sel;
-                                self.tabla[i_sel][j_sel] = None;
-                                miscari::verif_sah(&self.tabla, i as i32, j as i32);
+                                // Tuturor pieselor care ataca vechea sau noua pozitie
+                                // le sunt sterse celulele atacate si recalculate dupa mutare
+                                let pcs_to_reset = [
+                                    p_old.clone().atacat.0,
+                                    p_new.atacat.0,
+                                    p_old.clone().atacat.1,
+                                    p_new.atacat.1,
+                                ]
+                                .concat();
+
+                                // Vechea pozitie a piesei nu mai ataca
+                                miscari::clear_attack(&mut self.tabla, i_old as i32, j_old as i32);
+
+                                // Stergerea pozitiilor atacate
+                                for (i, j) in &pcs_to_reset {
+                                    miscari::clear_attack(&mut self.tabla, *i, *j);
+                                }
+
+                                // Muta piesa
+                                self.tabla[i][j] = p_old.clone();
+                                self.tabla[i_old][j_old].piesa = None;
+                                self.tabla[i_old][j_old].atacat = (vec![], vec![]);
+
+                                // Cauta miscarile disponibile ale piesei proaspat mutate
+                                t::set_atacat_field(&mut self.tabla, i as i32, j as i32);
+                                // Actualizeaza miscari disponibile pentru piesele care atacau pozitiile...
+                                for (i, j) in pcs_to_reset {
+                                    t::set_atacat_field(&mut self.tabla, i, j);
+                                }
+
+                                for i in 0..8 {
+                                    for j in 0..8 {
+                                        print!("{:?}", self.tabla[i][j].atacat);
+                                    }
+                                    println!();
+                                }
+                                miscari::verif_sah(&self.tabla);
 
                                 // Randul urmatorului jucator
                                 self.turn = match self.turn {
@@ -110,11 +153,15 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
                         // ...daca nu, o selecteaza (daca e de aceeasi culoare)
                         } else {
-                            if let Some(piesa) = self.tabla[i][j] {
+                            if let Some(piesa) = &self.tabla[i][j].piesa {
                                 if self.turn == piesa.culoare {
                                     self.piesa_sel = Some((i, j));
-                                    self.miscari_disponibile =
-                                        miscari::get_miscari(&self.tabla, i as i32, j as i32);
+                                    self.miscari_disponibile = miscari::get_miscari(
+                                        &self.tabla,
+                                        i as i32,
+                                        j as i32,
+                                        false,
+                                    );
                                 }
                             }
                         }
@@ -128,9 +175,9 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 // la un click, amplaseaza pionul
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     if let Some((x, y)) = get_square_under_mouse(ctx) {
-                        if self.tabla[y][x].is_none() {
-                            self.tabla[y][x] = Some(Patratel {
-                                piesa: self.piesa_selectata,
+                        if self.tabla[y][x].piesa.is_none() {
+                            self.tabla[y][x].piesa = Some(Piesa {
+                                tip: self.piesa_selectata,
                                 culoare: Culoare::Alb,
                             });
                         }
@@ -138,9 +185,9 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 // la click-dreapta, amplaseaza piesa neagra
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
                     if let Some((x, y)) = get_square_under_mouse(ctx) {
-                        if self.tabla[y][x].is_none() {
-                            self.tabla[y][x] = Some(Patratel {
-                                piesa: self.piesa_selectata,
+                        if self.tabla[y][x].piesa.is_none() {
+                            self.tabla[y][x].piesa = Some(Piesa {
+                                tip: self.piesa_selectata,
                                 culoare: Culoare::Negru,
                             });
                         }
@@ -148,8 +195,8 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 // la click pe rotita, sterge pionul
                 } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
                     if let Some((x, y)) = get_square_under_mouse(ctx) {
-                        if self.tabla[y][x].is_some() {
-                            self.tabla[y][x] = None;
+                        if self.tabla[y][x].piesa.is_some() {
+                            self.tabla[y][x].piesa = None;
                         }
                     }
                 }
@@ -187,8 +234,8 @@ fn main() {
         miscari_disponibile: Vec::new(),
         match_state: MatchState::Joc,
         piesa_sel: None,
-        piesa_selectata: Piesa::Pion,
-        tabla: [[None; 8]; 8],
+        piesa_selectata: TipPiesa::Pion,
+        tabla: t::init_tabla(),
         turn: Culoare::Alb,
     };
     let c = ggez::conf::Conf::new();
