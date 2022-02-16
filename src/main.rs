@@ -88,7 +88,6 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             draw::attack(self, ctx)?;
             if self.game_state == GameState::Game {
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-                    println!("{:?}", self.miscari_disponibile);
                     // Daca clickul este in interiorul tablei
                     if let Some((j, i)) = get_square_under_mouse(ctx) {
                         // Daca exista o piesa selectata
@@ -98,6 +97,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                             if self.miscari_disponibile.contains(&(i, j)) {
                                 self.tabla[i][j] = p_sel;
                                 self.tabla[i_sel][j_sel] = None;
+                                miscari::verif_sah(&self.tabla, i as i32, j as i32);
 
                                 // Randul urmatorului jucator
                                 self.turn = match self.turn {
@@ -113,12 +113,8 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                             if let Some(piesa) = self.tabla[i][j] {
                                 if self.turn == piesa.culoare {
                                     self.piesa_sel = Some((i, j));
-                                    self.miscari_disponibile = miscari::get_miscari(
-                                        &self.tabla,
-                                        piesa.piesa,
-                                        i as i32,
-                                        j as i32,
-                                    );
+                                    self.miscari_disponibile =
+                                        miscari::get_miscari(&self.tabla, i as i32, j as i32);
                                 }
                             }
                         }

@@ -45,7 +45,7 @@ fn cal(tabla: &[[Option<Patratel>; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
-    
+
     // folosim vectorii de pozitie dx si dy pentru a genera toate miscarile posibile in forma de L
     // (2 patrate pe orizontala, 1 patrate pe verticala / 2 patrate pe verticala si 1 patrate pe orizontala)
     let di = [-2, -2, -1, -1, 1, 1, 2, 2];
@@ -151,16 +151,26 @@ fn cautare_in_linie(
 
 pub(crate) fn get_miscari(
     tabla: &[[Option<Patratel>; 8]; 8],
-    piesa: Piesa,
     i: i32,
     j: i32,
 ) -> Vec<(usize, usize)> {
-    match piesa {
+    match tabla[i as usize][j as usize].unwrap().piesa {
         Piesa::Pion => pion(tabla, i, j),
         Piesa::Tura => tura(tabla, i, j),
         Piesa::Cal => cal(tabla, i, j),
         Piesa::Nebun => nebun(tabla, i, j),
         Piesa::Regina => regina(tabla, i, j),
         Piesa::Rege => rege(tabla, i, j),
+    }
+}
+
+/// Printeaza (deocamdata) daca piesa de la (i, j) baga celalalt rege in sah
+pub(crate) fn verif_sah(tabla: &[[Option<Patratel>; 8]; 8], i: i32, j: i32) {
+    for (i, j) in get_miscari(tabla, i, j) {
+        if let Some(patrat) = tabla[i][j] {
+            if patrat.piesa == Piesa::Rege {
+                println!("{:?} e in sah!", patrat.culoare);
+            }
+        }
     }
 }
