@@ -1,4 +1,4 @@
-use crate::{t::in_board, Culoare, Patratel, TipPiesa};
+use crate::{tabla::{in_board, Culoare, Patratel, TipPiesa}};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
@@ -9,8 +9,8 @@ fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
     for di in -1..=1 {
         for dj in -1..=1 {
             if in_board(i + di, j + dj) {
-                let sumi = ui + di as usize;
-                let sumj = uj + dj as usize;
+                let sumi = (i + di) as usize;
+                let sumj = (j + dj) as usize;
 
                 if tabla[sumi][sumj].piesa.is_some() {
                     if tabla[ui][uj].piesa.clone().unwrap().culoare
@@ -29,17 +29,38 @@ fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru nebunul de la (i, j)
 fn nebun(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
-    cautare_in_linie(tabla, i, j, &[(-1, -1), (-1, 1), (1, 1), (1, -1)], a_ales_violenta)
+    cautare_in_linie(
+        tabla,
+        i,
+        j,
+        &[(-1, -1), (-1, 1), (1, 1), (1, -1)],
+        a_ales_violenta,
+    )
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru tura de la (i, j)
 fn tura(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
-    cautare_in_linie(tabla, i, j, &[(-1, 0), (0, 1), (1, 0), (0, -1)], a_ales_violenta)
+    cautare_in_linie(
+        tabla,
+        i,
+        j,
+        &[(-1, 0), (0, 1), (1, 0), (0, -1)],
+        a_ales_violenta,
+    )
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regina de la (i, j)
-fn regina(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
-    [nebun(tabla, i, j, a_ales_violenta), tura(tabla, i, j, a_ales_violenta)].concat()
+fn regina(
+    tabla: &[[Patratel; 8]; 8],
+    i: i32,
+    j: i32,
+    a_ales_violenta: bool,
+) -> Vec<(usize, usize)> {
+    [
+        nebun(tabla, i, j, a_ales_violenta),
+        tura(tabla, i, j, a_ales_violenta),
+    ]
+    .concat()
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de la (i, j)
@@ -55,8 +76,8 @@ fn cal(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
 
     for k in 0..8 {
         if in_board(i + di[k], j + dj[k]) {
-            let sumi = ui + di[k] as usize;
-            let sumj = uj + dj[k] as usize;
+            let sumi = (i + di[k]) as usize;
+            let sumj = (j + dj[k]) as usize;
 
             if tabla[sumi][sumj].piesa.is_some() {
                 if tabla[ui][uj].piesa.clone().unwrap().culoare
@@ -163,7 +184,12 @@ fn cautare_in_linie(
 }
 
 /// Returneaza o lista (linie, coloana) cu toate patratele in care se poate muta piesa de la (i, j)
-pub(crate) fn get_miscari(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
+pub(crate) fn get_miscari(
+    tabla: &[[Patratel; 8]; 8],
+    i: i32,
+    j: i32,
+    a_ales_violenta: bool,
+) -> Vec<(usize, usize)> {
     if let Some(piesa) = &tabla[i as usize][j as usize].piesa {
         match piesa.tip {
             TipPiesa::Pion => pion(tabla, i, j),
@@ -186,13 +212,11 @@ pub(crate) fn verif_sah(tabla: &[[Patratel; 8]; 8]) {
         for j in 0..8 {
             if let Some(piesa) = &tabla[i][j].piesa {
                 if piesa.tip == TipPiesa::Rege {
-                    if piesa.culoare == Culoare::Alb {
-                        if !tabla[i][j].atacat.1.is_empty() {
-                            println!("{:?} e in sah", piesa.culoare);
-                        }
-                    } else {
-                        if !tabla[i][j].atacat.0.is_empty() {
-                            println!("{:?} e in sah", piesa.culoare);
+                    for i in tabla[i][j].atacat.iter() {
+                        if let Some(agresor) = &tabla[i.0 as usize][i.1 as usize].piesa.clone() {
+                            if agresor.culoare != piesa.culoare {
+                                println!("Regele {:?} se afla in sah!", piesa.culoare);
+                            }
                         }
                     }
                 }
@@ -204,18 +228,10 @@ pub(crate) fn verif_sah(tabla: &[[Patratel; 8]; 8]) {
 /// Sterge din lista `atacat` piesa de pe pozitia (i, j),
 /// pentru fiecare celula la care poate ajunge (i, j)
 pub(crate) fn clear_attack(tabla: &mut [[Patratel; 8]; 8], i: i32, j: i32) {
-    if let Some(agresor) = &tabla[i as usize][j as usize].piesa {
+    if let Some(_) = &tabla[i as usize][j as usize].piesa {
         for (x, y) in get_miscari(&tabla, i, j, true) {
-            //println!("{:?}", tabla[x][y].atacat);
-
             // Sterge atacul piesei de pe celula (i, j)
-            if agresor.culoare == Culoare::Alb {
-                tabla[x][y].atacat.0.retain(|(a, b)| !(*a == i && *b == j));
-            } else {
-                tabla[x][y].atacat.1.retain(|(a, b)| !(*a == i && *b == j));
-            }
+            tabla[x][y].atacat.retain(|(a, b)| !(*a == i && *b == j));
         }
-        //println!("{:?}", tabla[x][y].atacat);
     }
-    //println!("gata piesa");
 }
