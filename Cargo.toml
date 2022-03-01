@@ -13,3 +13,5 @@ authors = [
 ggez = "^0.7.0"
 egui = "^0.15.0"
 ggez-egui = "^0.1.3"
+lazy_static = "^1.4.0"
+regex = "^1.5.4"

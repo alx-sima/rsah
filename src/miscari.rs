@@ -227,9 +227,9 @@ pub(crate) fn verif_sah(tabla: &[[Patratel; 8]; 8]) {
 
 /// Sterge din lista `atacat` piesa de pe pozitia (i, j),
 /// pentru fiecare celula la care poate ajunge (i, j)
-pub(crate) fn clear_attack(tabla: &mut [[Patratel; 8]; 8], i: i32, j: i32) {
-    if let Some(_) = &tabla[i as usize][j as usize].piesa {
-        for (x, y) in get_miscari(&tabla, i, j, true) {
+pub(crate) fn clear_attack(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
+    if let Some(_) = &tabla[i][j].piesa {
+        for (x, y) in get_miscari(&tabla, i as i32, j as i32, true) {
             // Sterge atacul piesei de pe celula (i, j)
             tabla[x][y].atacat.retain(|(a, b)| !(*a == i && *b == j));
         }

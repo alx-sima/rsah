@@ -15,15 +15,15 @@ pub(crate) fn place(
     }
 }
 
-/// Sterge piesa de pe pozitia (i, j)
+/// Sterge piesa de pe pozitia *(i, j)*
 pub(crate) fn delete(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
     tabla[i][j] = Default::default();
 }
 
-/// Handle pt. clickurile facute in editor.
-/// Click => pune piesa alba;
-/// Click dr. => pune piesa neagra;
-/// Clic mij. => sterge piesa.
+/// Handle pt. clickurile facute in editor:
+/// *click* => pune piesa *alba*;
+/// *click dr.* => pune piesa *neagra*;
+/// *clic mij.* => *sterge* piesa.
 pub(crate) fn player_turn(
     ctx: &mut ggez::Context,
     tabla: &mut [[Patratel; 8]; 8],

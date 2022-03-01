@@ -3,6 +3,7 @@ use crate::{miscari, L};
 pub(crate) mod editor;
 pub(crate) mod game;
 pub(crate) mod generare;
+pub(crate) mod istoric;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum TipPiesa {
@@ -48,8 +49,10 @@ pub(crate) struct Piesa {
 #[derive(Clone, Debug)]
 pub(crate) struct Patratel {
     pub(crate) piesa: Option<Piesa>,
-    pub(crate) atacat: Vec<(i32, i32)>,
+    pub(crate) atacat: Vec<(usize, usize)>,
 }
+
+pub(crate) type Tabla = [[Patratel; 8]; 8];
 
 impl Default for Patratel {
     fn default() -> Self {
@@ -79,8 +82,8 @@ pub(crate) fn get_square_under_mouse(ctx: &mut ggez::Context) -> Option<(usize, 
 }
 
 /// Marcheaza patratele atacate de piesa de la (i, j)
-pub(crate) fn set_atacat_field(tabla: &mut [[Patratel; 8]; 8], i: i32, j: i32) {
-    for (x, y) in miscari::get_miscari(tabla, i, j, true) {
-        tabla[x as usize][y as usize].atacat.push((i, j));
+pub(crate) fn set_atacat_field(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
+    for (x, y) in miscari::get_miscari(tabla, i as i32, j as i32, true) {
+        tabla[x][y].atacat.push((i, j));
     }
 }

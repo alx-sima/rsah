@@ -1,6 +1,6 @@
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
-use tabla::{Culoare, Patratel, TipPiesa};
+use tabla::{Culoare, TipPiesa};
 
 mod draw;
 mod gui;
@@ -30,7 +30,7 @@ struct State {
     /// In ce meniu/mod de joc e
     game_state: GameState,
     /// Tabla de joc
-    tabla: [[Patratel; 8]; 8],
+    tabla: tabla::Tabla,
     /// Istoric miscari
     istoric: Vec<String>,
     /// Patratele disponibile
@@ -112,6 +112,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 }
 
+/*
 fn main() {
     let state = State {
         egui_backend: EguiBackend::default(),
@@ -131,4 +132,72 @@ fn main() {
         .unwrap();
 
     ggez::event::run(ctx, event_loop, state);
+}
+*/
+fn main() {
+    test::game_no_gui();
+}
+
+mod test {
+    use crate::{
+        tabla::{self, Culoare, TipPiesa},
+        MatchState,
+    };
+
+    fn print_tabla(tabla: &tabla::Tabla) {
+        println!("  A B C D E F G H");
+        for i in 0..8 {
+            print!("{} ", 8 - i);
+            for j in 0..8 {
+                if let Some(piesa) = &tabla[i][j].piesa {
+                    let tip = match piesa.tip {
+                        TipPiesa::Pion => "p",
+                        TipPiesa::Tura => "r",
+                        TipPiesa::Cal => "n",
+                        TipPiesa::Nebun => "b",
+                        TipPiesa::Regina => "q",
+                        TipPiesa::Rege => "k",
+                    };
+                    if piesa.culoare == Culoare::Alb {
+                        print!("{} ", tip.to_uppercase());
+                    } else {
+                        print!("{} ", tip);
+                    }
+                } else {
+                    print!(". ");
+                }
+            }
+            println!("{}", 8 - i);
+        }
+        println!("  A B C D E F G H");
+    }
+
+    pub(crate) fn game_no_gui() {
+        let mut tabla = tabla::generare::tabla_clasica();
+        let mut turn = Culoare::Alb;
+
+        let match_state = &mut MatchState::Joc;
+        let istoric = &mut Vec::new();
+
+        print_tabla(&tabla);
+        loop {
+            let mut buf = String::new();
+            std::io::stdin().read_line(&mut buf).unwrap();
+            if let Some(poz) = tabla::istoric::decode_move(&mut tabla, buf.trim(), turn) {
+                let src_poz = (poz.0, poz.1);
+                let dest_poz = (poz.2, poz.3);
+                tabla::game::muta(
+                    &mut tabla,
+                    &mut turn,
+                    match_state,
+                    istoric,
+                    src_poz,
+                    dest_poz,
+                );
+                print_tabla(&tabla);
+            } else {
+                println!("nu e valid");
+            }
+        }
+    }
 }

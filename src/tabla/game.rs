@@ -1,4 +1,4 @@
-use super::{set_atacat_field, Culoare, Patratel};
+use super::{istoric, set_atacat_field, Culoare, Patratel};
 
 use crate::{miscari, MatchState};
 
@@ -23,10 +23,10 @@ pub(crate) fn muta(
     // le sunt sterse celulele atacate si recalculate dupa mutare
     let pcs_to_reset = [p_old.clone().atacat, p_new.atacat].concat();
 
-    let mut mutare = encode_move(tabla, src_poz, dest_poz);
+    let mut mutare = istoric::encode_move(tabla, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
-    miscari::clear_attack(tabla, src_poz.0 as i32, src_poz.1 as i32);
+    miscari::clear_attack(tabla, src_poz.0, src_poz.1);
 
     // Stergerea pozitiilor atacate
     for (i, j) in &pcs_to_reset {
@@ -38,7 +38,7 @@ pub(crate) fn muta(
     tabla[src_poz.0][src_poz.1] = Patratel::default();
 
     // Cauta miscarile disponibile ale piesei proaspat mutate
-    set_atacat_field(tabla, dest_poz.0 as i32, dest_poz.1 as i32);
+    set_atacat_field(tabla, dest_poz.0, dest_poz.1);
     // Actualizeaza miscari disponibile pentru piesele care atacau pozitiile
     for (i, j) in pcs_to_reset {
         set_atacat_field(tabla, i, j);
@@ -107,58 +107,4 @@ pub(crate) fn player_turn(
             }
         }
     }
-}
-
-fn encode_move(
-    tabla: &mut [[Patratel; 8]; 8],
-    src_poz: (usize, usize),
-    dest_poz: (usize, usize),
-) -> String {
-    let p_old = tabla[src_poz.0][src_poz.1].clone();
-    let p_new = tabla[dest_poz.0][dest_poz.1].clone();
-    // Adaugare miscare in istoric
-    // FIXME: scapa de unwrap
-    let mut mutare = format!("{}", p_old.clone().piesa.unwrap().tip);
-
-    let mut scrie_lin = false;
-    let mut scrie_col = false;
-    for k in &tabla[dest_poz.0][dest_poz.1].atacat {
-        // Exista o alta piesa care ataca celula destinatie...
-        if k.0 != src_poz.0 as i32 || k.1 != src_poz.1 as i32 {
-            // ... si e de acelasi tip
-            if tabla[k.0 as usize][k.1 as usize].piesa == p_old.clone().piesa {
-                // Daca sunt pe aceeasi coloana se va afisa linia
-                if k.1 == src_poz.1 as i32 {
-                    scrie_lin = true;
-                // Daca nu, se scrie coloana, indiferent daca sunt pe aceeasi linie sau nu (se poate intampla la cai de ex.)
-                } else {
-                    scrie_col = true;
-                }
-            }
-        }
-    }
-
-    if scrie_col {
-        // Wall of shame: aduni un string cu un numar si vrei sa-ti dea un caracter
-        // Ce voiai sa faci: 'a' + 1 = 'b'
-        // Ce ai facut: 1 + "a" = "1a"
-
-        // 65 = 'a'
-        mutare += ((src_poz.1 as u8 + 97u8) as char).to_string().as_str();
-    }
-    if scrie_lin {
-        mutare += (8 - src_poz.0).to_string().as_str();
-    }
-
-    if p_new.piesa.is_some() {
-        mutare += "x"
-    }
-
-    mutare += ((dest_poz.1 as u8 + 97u8) as char).to_string().as_str();
-    mutare += (8 - dest_poz.0).to_string().as_str();
-    mutare
-}
-
-fn decode_move(mov: &str) -> (usize, usize, usize, usize) {
-    todo!()
 }

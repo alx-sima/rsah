@@ -1,10 +1,11 @@
-use super::{set_atacat_field, Piesa, TipPiesa, Culoare, Patratel};
+use super::{set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa};
 
 /// Genereaza layoutul tablei de sah dupa template.
 /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
 /// 'template' este un vector de stringuri, fiecare string
 /// marcand o linie, in loc sa fie un singur string separat de '\n')
-pub(crate) fn tabla_from(tabla: &mut [[Patratel; 8]; 8], template: [&str; 8]) {
+pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
+    let mut tabla: [[Patratel; 8]; 8] = Default::default();
     for (i, line) in template.iter().enumerate() {
         for (j, c) in line.chars().enumerate() {
             let culoare = if c.is_lowercase() {
@@ -58,23 +59,21 @@ pub(crate) fn tabla_from(tabla: &mut [[Patratel; 8]; 8], template: [&str; 8]) {
     // Calculeaza pozitiile atacate
     for i in 0..8 {
         for j in 0..8 {
-            set_atacat_field(tabla, i as i32, j as i32);
+            set_atacat_field(&mut tabla, i, j);
         }
     }
+    tabla
 }
 
 /// Genereaza o tabla de sah clasica
-pub(crate) fn tabla_clasica(tabla: &mut [[Patratel; 8]; 8]) {
-    tabla_from(
-        tabla,
-        [
-            "rnbqkbnr", "pppppppp", "........", "........", "........", "........", "PPPPPPPP",
-            "RNBQKBNR",
-        ],
-    );
+pub(crate) fn tabla_clasica() -> Tabla {
+    tabla_from([
+        "rnbqkbnr", "pppppppp", "........", "........", "........", "........", "PPPPPPPP",
+        "RNBQKBNR",
+    ])
 }
 
 /// Genereaza o tabla de joc aleatorie
-pub(crate) fn tabla_rand(tabla: &mut [[Patratel; 8]; 8]) {
-    todo!();
+pub(crate) fn tabla_random() -> Tabla {
+    todo!()
 }
