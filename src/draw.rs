@@ -42,10 +42,12 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
     Ok(())
 }
 
+/// Deseneaza piesele
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     for i in 0..8 {
         for j in 0..8 {
-            if let Some(patratel) = &state.tabla[i][j].piesa {
+            let (i_pies, j_pies) = if state.guest { (7 - i, j) } else { (i, j) };
+            if let Some(patratel) = &state.tabla[i_pies][j_pies].piesa {
                 let img = graphics::Image::new(
                     ctx,
                     &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.tip),
@@ -82,9 +84,18 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
             )?
             .build(ctx)?;
         for (i, j) in &game_state.miscari_disponibile {
-            graphics::draw(ctx, &patrat_galben, ([*j as f32 * L, *i as f32 * L],))?;
+            let (x, y) = if game_state.guest {
+                ((*j) as f32 * L, (7 - *i) as f32 * L)
+            } else {
+                (*j as f32 * L, *i as f32 * L)
+            };
+            graphics::draw(ctx, &patrat_galben, ([x, y],))?;
         }
-        graphics::draw(ctx, &patrat_verde, ([y as f32 * L, x as f32 * L],))?;
+        if game_state.guest {
+            graphics::draw(ctx, &patrat_verde, ([y as f32 * L, (7 - x) as f32 * L],))?;
+        } else {
+            graphics::draw(ctx, &patrat_verde, ([y as f32 * L, x as f32 * L],))?;
+        }
     }
     Ok(())
 }

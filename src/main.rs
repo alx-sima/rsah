@@ -1,3 +1,5 @@
+use std::{io::Read, net::TcpStream, time};
+
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
 use tabla::{Culoare, TipPiesa};
@@ -15,14 +17,12 @@ enum GameState {
     MainMenu,
     Game,
     Editor,
+    Multiplayer,
 }
 
-#[derive(PartialEq)]
-enum MatchState {
-    Joc,
-    Sah,
-    Mat,
-    // Pat,
+struct Address {
+    ip: [u8; 4],
+    port: u16,
 }
 
 /// Variabilele globale ale jocului
@@ -37,13 +37,16 @@ struct State {
     miscari_disponibile: Vec<(usize, usize)>,
     /// Al cui e randul
     turn: Culoare,
-    // FIXME: valea!!
-    match_state: MatchState,
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
     piesa_sel: Option<(usize, usize)>,
     piesa_selectata_editor: TipPiesa,
     egui_backend: EguiBackend,
+    stream: Option<TcpStream>,
+    address: Address,
+    /// Daca e true, meciul se joaca pe alt dispozitiv,
+    /// piesele negre vor aparea in josul tablei
+    guest: bool,
 }
 
 impl ggez::event::EventHandler<ggez::GameError> for State {
@@ -60,17 +63,35 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             GameState::Editor => {
                 gui::editor(self, &egui_ctx);
             }
+            GameState::Multiplayer => {
+                if (self.turn == Culoare::Negru) != self.guest {
+                    let mut buf = [0; 16];
+                    let len = self.stream.as_mut().unwrap().read(&mut buf).unwrap();
+                    let msg = std::str::from_utf8(&buf[..len]).unwrap();
+                    println!("{}", msg);
+
+                    if let Some((src_poz, dest_poz)) =
+                        tabla::istoric::decode_move(&self.tabla, msg, self.turn)
+                    {
+                        tabla::game::muta(&mut self.tabla, &mut self.turn, src_poz, dest_poz);
+                    }
+                }
+            }
         }
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
+        println!("{:?}", time::Instant::now());
         graphics::clear(ctx, graphics::Color::BLACK);
 
         if self.game_state != GameState::MainMenu {
             draw::board(ctx)?;
             draw::attack(self, ctx)?;
-            if self.game_state == GameState::Game {
+            if self.game_state == GameState::Game
+                || self.game_state == GameState::Multiplayer
+                    && (self.turn == Culoare::Negru) == self.guest
+            {
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     tabla::game::player_turn(
                         ctx,
@@ -78,8 +99,9 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                         &mut self.piesa_sel,
                         &mut self.miscari_disponibile,
                         &mut self.turn,
-                        &mut self.match_state,
                         &mut self.istoric,
+                        &mut self.stream,
+                        self.guest,
                     );
                 }
             } else if self.game_state == GameState::Editor {
@@ -112,18 +134,22 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 }
 
-/*
 fn main() {
     let state = State {
         egui_backend: EguiBackend::default(),
         game_state: GameState::MainMenu,
         miscari_disponibile: Vec::new(),
-        match_state: MatchState::Joc,
         istoric: Vec::new(),
         piesa_sel: None,
         piesa_selectata_editor: TipPiesa::Pion,
         tabla: Default::default(),
         turn: Culoare::Alb,
+        stream: None,
+        address: Address {
+            ip: [127, 0, 0, 1],
+            port: 8080,
+        },
+        guest: false,
     };
     let c = ggez::conf::Conf::new();
     let (ctx, event_loop) = ggez::ContextBuilder::new("rsah", "bamse")
@@ -132,72 +158,4 @@ fn main() {
         .unwrap();
 
     ggez::event::run(ctx, event_loop, state);
-}
-*/
-fn main() {
-    test::game_no_gui();
-}
-
-mod test {
-    use crate::{
-        tabla::{self, Culoare, TipPiesa},
-        MatchState,
-    };
-
-    fn print_tabla(tabla: &tabla::Tabla) {
-        println!("  A B C D E F G H");
-        for i in 0..8 {
-            print!("{} ", 8 - i);
-            for j in 0..8 {
-                if let Some(piesa) = &tabla[i][j].piesa {
-                    let tip = match piesa.tip {
-                        TipPiesa::Pion => "p",
-                        TipPiesa::Tura => "r",
-                        TipPiesa::Cal => "n",
-                        TipPiesa::Nebun => "b",
-                        TipPiesa::Regina => "q",
-                        TipPiesa::Rege => "k",
-                    };
-                    if piesa.culoare == Culoare::Alb {
-                        print!("{} ", tip.to_uppercase());
-                    } else {
-                        print!("{} ", tip);
-                    }
-                } else {
-                    print!(". ");
-                }
-            }
-            println!("{}", 8 - i);
-        }
-        println!("  A B C D E F G H");
-    }
-
-    pub(crate) fn game_no_gui() {
-        let mut tabla = tabla::generare::tabla_clasica();
-        let mut turn = Culoare::Alb;
-
-        let match_state = &mut MatchState::Joc;
-        let istoric = &mut Vec::new();
-
-        print_tabla(&tabla);
-        loop {
-            let mut buf = String::new();
-            std::io::stdin().read_line(&mut buf).unwrap();
-            if let Some(poz) = tabla::istoric::decode_move(&mut tabla, buf.trim(), turn) {
-                let src_poz = (poz.0, poz.1);
-                let dest_poz = (poz.2, poz.3);
-                tabla::game::muta(
-                    &mut tabla,
-                    &mut turn,
-                    match_state,
-                    istoric,
-                    src_poz,
-                    dest_poz,
-                );
-                print_tabla(&tabla);
-            } else {
-                println!("nu e valid");
-            }
-        }
-    }
 }

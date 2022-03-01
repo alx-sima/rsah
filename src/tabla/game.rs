@@ -1,19 +1,19 @@
+use std::{io::Write, net::TcpStream};
+
 use super::{istoric, set_atacat_field, Culoare, Patratel};
 
-use crate::{miscari, MatchState};
+use crate::miscari;
 
-/// Muta piesa de pe (src_poz) pe (dest_poz),
+/// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
-/// adauga in 'istoric' miscarea
-/// si schimba randul jucatorilor
+/// schimba randul jucatorilor si
+/// returneaza notatia algebrica a miscarii
 pub(crate) fn muta(
     tabla: &mut [[Patratel; 8]; 8],
     turn: &mut Culoare,
-    match_state: &mut MatchState,
-    istoric: &mut Vec<String>,
     src_poz: (usize, usize),
     dest_poz: (usize, usize),
-) {
+) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla[src_poz.0][src_poz.1].clone();
     // Viitoarea pozitie a piesei
@@ -23,7 +23,7 @@ pub(crate) fn muta(
     // le sunt sterse celulele atacate si recalculate dupa mutare
     let pcs_to_reset = [p_old.clone().atacat, p_new.atacat].concat();
 
-    let mut mutare = istoric::encode_move(tabla, src_poz, dest_poz);
+    let mutare = istoric::encode_move(tabla, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
     miscari::clear_attack(tabla, src_poz.0, src_poz.1);
@@ -50,15 +50,12 @@ pub(crate) fn muta(
     // Adauga la istoric pentru miscarea curenta:
     // - "+" in caz ca se afla in sah;
     // - "#" in caz ca se afla in mat.
-    if *match_state == MatchState::Sah {
-        mutare += "+";
-    }
-    if *match_state == MatchState::Mat {
-        mutare += "#";
-    }
-
-    println!("{}", &mutare);
-    istoric.push(mutare);
+    //if *match_state == MatchState::Sah {
+    //    mutare += "+";
+    //}
+    //if *match_state == MatchState::Mat {
+    //    mutare += "#";
+    //}
 
     // Randul urmatorului jucator
     // Schimba turn din alb in negru si din negru in alb
@@ -66,6 +63,8 @@ pub(crate) fn muta(
         Culoare::Alb => Culoare::Negru,
         Culoare::Negru => Culoare::Alb,
     };
+    println!("{}", &mutare);
+    mutare
 }
 
 pub(crate) fn player_turn(
@@ -74,23 +73,22 @@ pub(crate) fn player_turn(
     piesa_sel: &mut Option<(usize, usize)>,
     miscari_disponibile: &mut Vec<(usize, usize)>,
     turn: &mut Culoare,
-    match_state: &mut MatchState,
     istoric: &mut Vec<String>,
+    stream: &mut Option<TcpStream>,
+    reversed: bool,
 ) {
     // Daca clickul este in interiorul tablei
-    if let Some((dest_j, dest_i)) = super::get_square_under_mouse(ctx) {
+    if let Some((dest_j, dest_i)) = super::get_square_under_mouse(ctx, reversed) {
         // Daca exista o piesa selectata...
-        if let Some((src_i, src_j)) = *piesa_sel {
+        if let Some(src_poz) = *piesa_sel {
             // Daca miscarea este valida, efectueaza mutarea
             if miscari_disponibile.contains(&(dest_i, dest_j)) {
-                muta(
-                    tabla,
-                    turn,
-                    match_state,
-                    istoric,
-                    (src_i, src_j),
-                    (dest_i, dest_j),
-                );
+                let mov = muta(tabla, turn, src_poz, (dest_i, dest_j));
+                istoric.push(mov.clone());
+
+                if let Some(stream) = stream {
+                    stream.write(mov.as_bytes()).unwrap();
+                }
             }
             // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
             *piesa_sel = None;

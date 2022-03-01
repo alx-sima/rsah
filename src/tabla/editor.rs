@@ -31,17 +31,18 @@ pub(crate) fn player_turn(
 ) {
     // la un click, amplaseaza piesa alba
     if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-        if let Some((j, i)) = super::get_square_under_mouse(ctx) {
+        // reversed va fi mereu false pt ca nu esti masochist sa editezi tabla invers
+        if let Some((j, i)) = super::get_square_under_mouse(ctx, false) {
             place(tabla, i, j, piesa_selectata_editor, Culoare::Alb);
         }
     // la click-dreapta, amplaseaza piesa neagra
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
-        if let Some((j, i)) = super::get_square_under_mouse(ctx) {
+        if let Some((j, i)) = super::get_square_under_mouse(ctx, false) {
             place(tabla, i, j, piesa_selectata_editor, Culoare::Negru);
         }
     // la click pe rotita, sterge pionul
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
-        if let Some((j, i)) = super::get_square_under_mouse(ctx) {
+        if let Some((j, i)) = super::get_square_under_mouse(ctx, false) {
             delete(tabla, i, j);
         }
     }

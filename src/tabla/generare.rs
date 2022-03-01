@@ -74,6 +74,6 @@ pub(crate) fn tabla_clasica() -> Tabla {
 }
 
 /// Genereaza o tabla de joc aleatorie
-pub(crate) fn tabla_random() -> Tabla {
+pub(crate) fn _tabla_random() -> Tabla {
     todo!()
 }

@@ -1,3 +1,5 @@
+use std::net::{TcpListener, TcpStream};
+
 use ggez_egui::EguiContext;
 
 use crate::{
@@ -12,26 +14,69 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             if ui.button("Start").clicked() {
                 game_state.turn = Culoare::Alb;
                 game_state.game_state = GameState::Game;
-                game_state.tabla = generare::tabla_from([
-                    "R       ", "        ", "R       ", "        ", "        ", "        ",
-                    "        ", "        ",
-                ]);
-                //generare::tabla_clasica(&mut game_state.tabla);
+                game_state.tabla = generare::tabla_clasica();
             }
-            /*
+
             ui.vertical(|ui| {
                 ui.label("Multiplayer");
-                let mut ip = [0u8; 4];
-                let mut port = 8080;
 
-                ui.add(egui::Slider::new(&mut ip[0], 0..=255));
-                ui.add(egui::Slider::new(&mut ip[1], 0..=255));
-                ui.add(egui::Slider::new(&mut ip[2], 0..=255));
-                ui.add(egui::Slider::new(&mut ip[3], 0..=255));
-                ui.add(egui::Slider::new(&mut port, 0..=65535));
-                if ui.button("Connect").clicked() {}
+                ui.add(egui::Slider::new(&mut game_state.address.ip[0], 0..=255));
+                ui.add(egui::Slider::new(&mut game_state.address.ip[1], 0..=255));
+                ui.add(egui::Slider::new(&mut game_state.address.ip[2], 0..=255));
+                ui.add(egui::Slider::new(&mut game_state.address.ip[3], 0..=255));
+                ui.add(egui::Slider::new(&mut game_state.address.port, 0..=65535));
+                if ui.button("Join").clicked() {
+                    match TcpStream::connect(
+                        format!(
+                            "{}.{}.{}.{}:{}",
+                            game_state.address.ip[0],
+                            game_state.address.ip[1],
+                            game_state.address.ip[2],
+                            game_state.address.ip[3],
+                            game_state.address.port
+                        )
+                        .as_str(),
+                    ) {
+                        Ok(s) => {
+                            game_state.guest = true;
+                            game_state.turn = Culoare::Alb;
+                            game_state.tabla = generare::tabla_clasica();
+                            game_state.stream = Some(s);
+                            game_state.game_state = GameState::Multiplayer;
+                        }
+                        Err(e) => {
+                            println!("{}", e);
+                            return;
+                        }
+                    };
+                }
+                if ui.button("Host").clicked() {
+                    let listener = TcpListener::bind(
+                        format!(
+                            "{}.{}.{}.{}:{}",
+                            game_state.address.ip[0],
+                            game_state.address.ip[1],
+                            game_state.address.ip[2],
+                            game_state.address.ip[3],
+                            game_state.address.port
+                        )
+                        .as_str(),
+                    )
+                    .unwrap();
+                    match listener.accept() {
+                        Ok((s, _addr)) => {
+                            game_state.turn = Culoare::Alb;
+                            game_state.tabla = generare::tabla_clasica();
+                            game_state.stream = Some(s);
+                            game_state.game_state = GameState::Multiplayer;
+                        }
+                        Err(e) => {
+                            println!("couldn't get client: {}", e);
+                            return;
+                        }
+                    };
+                }
             });
-            */
 
             if ui.button("Editor").clicked() {
                 game_state.piesa_selectata_editor = TipPiesa::Pion;

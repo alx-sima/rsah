@@ -60,13 +60,13 @@ pub(crate) fn encode_move(
 /// Inversul operatiei **encode_move**:
 /// Din stringul *mov* si pozitiile pieselor de pe *tabla*,
 /// se deduc pozitiile de unde si pana unde a fost mutata piesa.
-/// Rezultatul va fi *Some(src_i, src_j, dest_i, dest_j)*
+/// Rezultatul va fi *Some((src_i, src_j), (dest_i, dest_j))*
 /// sau *None* (stringul nu este valid).
 pub(crate) fn decode_move(
-    tabla: &mut [[Patratel; 8]; 8],
+    tabla:  &[[Patratel; 8]; 8],
     mov: &str,
     turn: Culoare,
-) -> Option<(usize, usize, usize, usize)> {
+) -> Option<((usize, usize), (usize, usize))> {
     lazy_static! {
         static ref REGX: Regex =
             Regex::new(r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?$").unwrap();
@@ -115,14 +115,14 @@ pub(crate) fn decode_move(
                     if piesa.tip == tip_piesa {
                         if let Some(dif_i) = dif_i {
                             if *i == dif_i {
-                                return Some((*i, *j, pozi, pozj));
+                                return Some(((*i, *j), (pozi, pozj)));
                             }
                         } else if let Some(dif_j) = dif_j {
                             if *j == dif_j {
-                                return Some((*i, *j, pozi, pozj));
+                                return Some(((*i, *j), (pozi, pozj)));
                             }
                         } else {
-                            return Some((*i, *j, pozi, pozj));
+                            return Some(((*i, *j), (pozi, pozj)));
                         }
                     }
                 }
@@ -176,8 +176,8 @@ mod test {
         ];
 
         for (str, template) in input {
-            let mut tabla = generare::tabla_from(template);
-            println!("{:?}", super::decode_move(&mut tabla, str, Culoare::Alb));
+            let tabla = generare::tabla_from(template);
+            println!("{:?}", super::decode_move(&tabla, str, Culoare::Alb));
         }
     }
 }

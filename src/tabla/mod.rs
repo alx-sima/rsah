@@ -70,12 +70,20 @@ pub(crate) fn in_board(i: i32, j: i32) -> bool {
 
 /// Returneaza coordonatele patratului unde se afla mouse-ul, sau
 /// None => mouse-ul nu se afla in tabla de sah
-pub(crate) fn get_square_under_mouse(ctx: &mut ggez::Context) -> Option<(usize, usize)> {
+pub(crate) fn get_square_under_mouse(
+    ctx: &mut ggez::Context,
+    reversed: bool,
+) -> Option<(usize, usize)> {
     let cursor = ggez::input::mouse::position(ctx);
     let x = (cursor.x / L) as i32;
     let y = (cursor.y / L) as i32;
     if in_board(x, y) {
-        Some((x as usize, y as usize))
+        if reversed {
+            println!("{}, {}", x, 7 - y);
+            Some((x as usize, 7 - y as usize))
+        } else {
+            Some((x as usize, y as usize))
+        }
     } else {
         None
     }
