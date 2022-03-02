@@ -64,6 +64,10 @@ pub(crate) fn muta(
         Culoare::Negru => Culoare::Alb,
     };
     println!("{}", &mutare);
+
+    for i in tabla {
+        println!("{:?}", i);
+    }
     mutare
 }
 

@@ -1,7 +1,7 @@
-use crate::{tabla::{in_board, Culoare, Patratel, TipPiesa}};
+use crate::tabla::{in_board, Culoare, Patratel, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
-fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
+fn rege(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
@@ -15,6 +15,7 @@ fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
                 if tabla[sumi][sumj].piesa.is_some() {
                     if tabla[ui][uj].piesa.clone().unwrap().culoare
                         != tabla[sumi][sumj].piesa.clone().unwrap().culoare
+                        || full_scan
                     {
                         rez.push((sumi, sumj));
                     }
@@ -28,43 +29,28 @@ fn rege(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru nebunul de la (i, j)
-fn nebun(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
+fn nebun(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     cautare_in_linie(
         tabla,
         i,
         j,
         &[(-1, -1), (-1, 1), (1, 1), (1, -1)],
-        a_ales_violenta,
+        full_scan,
     )
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru tura de la (i, j)
-fn tura(tabla: &[[Patratel; 8]; 8], i: i32, j: i32, a_ales_violenta: bool) -> Vec<(usize, usize)> {
-    cautare_in_linie(
-        tabla,
-        i,
-        j,
-        &[(-1, 0), (0, 1), (1, 0), (0, -1)],
-        a_ales_violenta,
-    )
+fn tura(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
+    cautare_in_linie(tabla, i, j, &[(-1, 0), (0, 1), (1, 0), (0, -1)], full_scan)
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regina de la (i, j)
-fn regina(
-    tabla: &[[Patratel; 8]; 8],
-    i: i32,
-    j: i32,
-    a_ales_violenta: bool,
-) -> Vec<(usize, usize)> {
-    [
-        nebun(tabla, i, j, a_ales_violenta),
-        tura(tabla, i, j, a_ales_violenta),
-    ]
-    .concat()
+fn regina(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
+    [nebun(tabla, i, j, full_scan), tura(tabla, i, j, full_scan)].concat()
 }
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de la (i, j)
-fn cal(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
+fn cal(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
@@ -82,6 +68,7 @@ fn cal(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
             if tabla[sumi][sumj].piesa.is_some() {
                 if tabla[ui][uj].piesa.clone().unwrap().culoare
                     != tabla[sumi][sumj].piesa.clone().unwrap().culoare
+                    || full_scan
                 {
                     rez.push((sumi, sumj));
                 }
@@ -95,7 +82,7 @@ fn cal(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 // TODO: repara mismatch isize-usize pt readability
-fn pion(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
+fn pion(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     let mut rez = Vec::new();
     let i = i as usize;
     let j = j as usize;
@@ -104,46 +91,44 @@ fn pion(tabla: &[[Patratel; 8]; 8], i: i32, j: i32) -> Vec<(usize, usize)> {
     // alb se misca in sus => scade randul in matrice;
     // negru se misca in jos => creste randul in matrice.
     // TODO: scapa de unwrap
-    let cul: i32 = if tabla[i][j].piesa.clone().unwrap().culoare == Culoare::Alb {
+    let cul = if tabla[i][j].piesa.clone().unwrap().culoare == Culoare::Alb {
         -1
     } else {
         1
     };
 
     // Randul din fata pionului
-    let i1 = i + cul as usize;
-    // daca patratul din fata pionului e liber, miscarea e valabila
-    if tabla[i1][j].piesa.is_none() {
+    let i1 = (i as i32 + cul) as usize;
+    // Daca patratul din fata pionului e liber, miscarea e valabila
+    if tabla[i1][j].piesa.is_none() || full_scan {
         rez.push((i1, j));
 
         // daca urmatoarele 2 patrate din fata pionului sunt libere, iar pionul este la prima miscare, acesta poate avansa 2 patrate
         // TODO: fix lazy programming (daca se afla pe primele 2 randuri poate avansa 2 patrate) => doar la prima miscare a pionului poate avansa 2 patrate
-        let i2 = i1 + cul as usize;
+        let i2 = (i1 as i32 + cul) as usize;
         if in_board(i2 as i32, j as i32) {
             if ((i <= 1 && cul == 1) || (i >= 6 && cul == -1))
-                && tabla[i2 as usize][j].piesa.is_none()
+                && (tabla[i2 as usize][j].piesa.is_none() || full_scan)
             {
                 rez.push((i2, j));
             }
         }
     }
-    // TODO: urmatoarele 2 if-uri sunt redundante, se poate face cu un for cred?
-    // daca patratul din fata-stanga e ocupat de o piesa inamica, miscarea e valabila
-    if in_board(i1 as i32, (j - 1) as i32) {
-        if let Some(victima) = &tabla[i1][(j - 1) as usize].piesa {
-            if victima.culoare != tabla[i as usize][j as usize].piesa.clone().unwrap().culoare {
-                rez.push((i1, j - 1));
+    // daca patratele din fata-stanga sau fata-dreapta sunt ocupate de o piesa inamica, miscarea e valabila
+    for j1 in [j - 1, j + 1] {
+        if in_board(i1 as i32, j1 as i32) {
+            if let Some(victima) = &tabla[i1][j1].piesa {
+                if victima.culoare != tabla[i as usize][j as usize].piesa.clone().unwrap().culoare
+                    || full_scan
+                {
+                    rez.push((i1, j1));
+                }
+            } else if full_scan {
+                rez.push((i1, j1));
             }
         }
     }
-    // daca patratul din fata-dreapta e ocupat de o piesa inamica, miscarea e valabila
-    if in_board(i1 as i32, (j + 1) as i32) {
-        if let Some(victima) = &tabla[i1 as usize][(j + 1) as usize].piesa {
-            if victima.culoare != tabla[i as usize][j as usize].piesa.clone().unwrap().culoare {
-                rez.push((i1, j + 1));
-            }
-        }
-    }
+
     // TODO: adaugare en passant (adaugare istoric miscari -> verificam daca ultima miscare permite en passant)
     rez
 }
@@ -183,21 +168,17 @@ fn cautare_in_linie(
     rez
 }
 
-/// Returneaza o lista (linie, coloana) cu toate patratele in care se poate muta piesa de la (i, j)
-pub(crate) fn get_miscari(
-    tabla: &[[Patratel; 8]; 8],
-    i: i32,
-    j: i32,
-    a_ales_violenta: bool,
-) -> Vec<(usize, usize)> {
+/// Returneaza o *lista[(linie, coloana)]* cu toate patratele in care se poate muta piesa de la *(i, j)*.
+/// Daca *full_scan* e setat, se returneaza **toate** celulele ale carui update ar putea afecta piesa.
+pub(crate) fn get_miscari(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     if let Some(piesa) = &tabla[i as usize][j as usize].piesa {
         match piesa.tip {
-            TipPiesa::Pion => pion(tabla, i, j),
-            TipPiesa::Tura => tura(tabla, i, j, a_ales_violenta),
-            TipPiesa::Cal => cal(tabla, i, j),
-            TipPiesa::Nebun => nebun(tabla, i, j, a_ales_violenta),
-            TipPiesa::Regina => regina(tabla, i, j, a_ales_violenta),
-            TipPiesa::Rege => rege(tabla, i, j),
+            TipPiesa::Pion => pion(tabla, i, j, full_scan),
+            TipPiesa::Tura => tura(tabla, i, j, full_scan),
+            TipPiesa::Cal => cal(tabla, i, j, full_scan),
+            TipPiesa::Nebun => nebun(tabla, i, j, full_scan),
+            TipPiesa::Regina => regina(tabla, i, j, full_scan),
+            TipPiesa::Rege => rege(tabla, i, j, full_scan),
         }
     // Daca patratul e gol, returneaza o lista goala
     } else {
@@ -207,7 +188,7 @@ pub(crate) fn get_miscari(
 
 /// Printeaza (deocamdata) daca vreun rege se afla in sah
 /// (campul `atacat` de pe celula lui nu e nul pentru culoarea inamica)
-pub(crate) fn verif_sah(tabla: &[[Patratel; 8]; 8]) {
+pub(crate) fn verif_sah(tabla: &Tabla) {
     for i in 0..8 {
         for j in 0..8 {
             if let Some(piesa) = &tabla[i][j].piesa {
@@ -227,7 +208,7 @@ pub(crate) fn verif_sah(tabla: &[[Patratel; 8]; 8]) {
 
 /// Sterge din lista `atacat` piesa de pe pozitia (i, j),
 /// pentru fiecare celula la care poate ajunge (i, j)
-pub(crate) fn clear_attack(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
+pub(crate) fn clear_attack(tabla: &mut Tabla, i: usize, j: usize) {
     if let Some(_) = &tabla[i][j].piesa {
         for (x, y) in get_miscari(&tabla, i as i32, j as i32, true) {
             // Sterge atacul piesei de pe celula (i, j)

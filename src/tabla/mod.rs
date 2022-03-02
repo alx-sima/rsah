@@ -79,8 +79,7 @@ pub(crate) fn get_square_under_mouse(
     let y = (cursor.y / L) as i32;
     if in_board(x, y) {
         if reversed {
-            println!("{}, {}", x, 7 - y);
-            Some((x as usize, 7 - y as usize))
+            Some((7 - x as usize, 7 - y as usize))
         } else {
             Some((x as usize, y as usize))
         }

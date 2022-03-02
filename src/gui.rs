@@ -38,6 +38,7 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
                         .as_str(),
                     ) {
                         Ok(s) => {
+                            s.set_nonblocking(true).unwrap();
                             game_state.guest = true;
                             game_state.turn = Culoare::Alb;
                             game_state.tabla = generare::tabla_clasica();
@@ -65,6 +66,7 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
                     .unwrap();
                     match listener.accept() {
                         Ok((s, _addr)) => {
+                            s.set_nonblocking(true).unwrap();
                             game_state.turn = Culoare::Alb;
                             game_state.tabla = generare::tabla_clasica();
                             game_state.stream = Some(s);

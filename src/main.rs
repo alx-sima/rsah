@@ -1,4 +1,4 @@
-use std::{io::Read, net::TcpStream, time};
+use std::{io::Read, net::TcpStream};
 
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
@@ -66,14 +66,17 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             GameState::Multiplayer => {
                 if (self.turn == Culoare::Negru) != self.guest {
                     let mut buf = [0; 16];
-                    let len = self.stream.as_mut().unwrap().read(&mut buf).unwrap();
-                    let msg = std::str::from_utf8(&buf[..len]).unwrap();
-                    println!("{}", msg);
-
-                    if let Some((src_poz, dest_poz)) =
-                        tabla::istoric::decode_move(&self.tabla, msg, self.turn)
-                    {
-                        tabla::game::muta(&mut self.tabla, &mut self.turn, src_poz, dest_poz);
+                    match self.stream.as_mut().unwrap().read(&mut buf) {
+                        Ok(len) => {
+                            let msg = std::str::from_utf8(&buf[..len]).unwrap();
+                            if let Some((src_poz, dest_poz)) =
+                            tabla::istoric::decode_move(&self.tabla, msg, self.turn)
+                            {
+                                // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
+                                tabla::game::muta(&mut self.tabla, &mut self.turn, src_poz, dest_poz);
+                            }
+                        }
+                        _ => {},
                     }
                 }
             }
@@ -82,7 +85,6 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
-        println!("{:?}", time::Instant::now());
         graphics::clear(ctx, graphics::Color::BLACK);
 
         if self.game_state != GameState::MainMenu {
@@ -90,7 +92,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             draw::attack(self, ctx)?;
             if self.game_state == GameState::Game
                 || self.game_state == GameState::Multiplayer
-                    && (self.turn == Culoare::Negru) == self.guest
+                && (self.turn == Culoare::Negru) == self.guest
             {
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     tabla::game::player_turn(
@@ -110,7 +112,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             draw::pieces(self, ctx)?;
         }
 
-        graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0],))?;
+        graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0], ))?;
         graphics::present(ctx)
     }
 

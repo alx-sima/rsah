@@ -110,7 +110,9 @@ pub(crate) fn decode_move(
         //  - care e de acelasi tip cu piesa mutata;
         //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
         for (i, j) in &tabla[pozi][pozj].atacat {
+            println!("{} {}", i, j);
             if let Some(piesa) = &tabla[*i][*j].piesa {
+                println!("({},{}):{:?}", i, j, piesa);
                 if piesa.culoare == turn {
                     if piesa.tip == tip_piesa {
                         if let Some(dif_i) = dif_i {

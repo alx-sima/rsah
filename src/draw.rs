@@ -46,7 +46,7 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     for i in 0..8 {
         for j in 0..8 {
-            let (i_pies, j_pies) = if state.guest { (7 - i, j) } else { (i, j) };
+            let (i_pies, j_pies) = if state.guest { (7 - i, 7 - j) } else { (i, j) };
             if let Some(patratel) = &state.tabla[i_pies][j_pies].piesa {
                 let img = graphics::Image::new(
                     ctx,
@@ -85,14 +85,18 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
             .build(ctx)?;
         for (i, j) in &game_state.miscari_disponibile {
             let (x, y) = if game_state.guest {
-                ((*j) as f32 * L, (7 - *i) as f32 * L)
+                ((7 - *j) as f32 * L, (7 - *i) as f32 * L)
             } else {
                 (*j as f32 * L, *i as f32 * L)
             };
             graphics::draw(ctx, &patrat_galben, ([x, y],))?;
         }
         if game_state.guest {
-            graphics::draw(ctx, &patrat_verde, ([y as f32 * L, (7 - x) as f32 * L],))?;
+            graphics::draw(
+                ctx,
+                &patrat_verde,
+                ([(7 - y) as f32 * L, (7 - x) as f32 * L],),
+            )?;
         } else {
             graphics::draw(ctx, &patrat_verde, ([y as f32 * L, x as f32 * L],))?;
         }
