@@ -2,11 +2,12 @@ use std::{io::Read, net::TcpStream};
 
 use ggez::{event::MouseButton, graphics, Context};
 use ggez_egui::EguiBackend;
+
 use tabla::{Culoare, TipPiesa};
 
+mod cautare_miscari;
 mod draw;
 mod gui;
-mod miscari;
 mod tabla;
 
 #[derive(PartialEq)]
@@ -70,12 +71,14 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                 tabla::istoric::decode_move(&self.tabla, msg, self.turn)
                             {
                                 // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                                tabla::game::muta(
-                                    &mut self.tabla,
-                                    &mut self.turn,
-                                    src_poz,
-                                    dest_poz,
-                                );
+                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz);
+
+                                // Randul urmatorului jucator
+                                // Schimba turn din alb in negru si din negru in alb
+                                self.turn = match self.turn {
+                                    Culoare::Alb => Culoare::Negru,
+                                    Culoare::Negru => Culoare::Alb,
+                                };
                             }
                         }
                         _ => {}

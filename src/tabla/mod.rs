@@ -1,4 +1,4 @@
-use crate::miscari;
+use crate::cautare_miscari;
 
 pub(crate) mod editor;
 pub(crate) mod game;
@@ -100,7 +100,7 @@ pub(crate) fn get_square_under_mouse(
 
 /// Marcheaza patratele atacate de piesa de la (i, j)
 pub(crate) fn set_atacat_field(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
-    for (x, y) in miscari::get_miscari(tabla, i as i32, j as i32, true) {
+    for (x, y) in cautare_miscari::get_miscari(tabla, i as i32, j as i32, true) {
         tabla[x][y].atacat.push((i, j));
     }
 }
