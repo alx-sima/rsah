@@ -2,21 +2,7 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::State;
 
-/// Calculeaza latura unui patratel de pe tabla de sah si paddingul la stanga/sus,
-/// pentru ca tabla sa fie centrata.
-/// Returneaza *(latura, offset x, offset y)*.
-pub(crate) fn get_dimensiuni_tabla(ctx: &ggez::Context) -> (f32, f32, f32) {
-    let (width, height) = graphics::drawable_size(ctx);
-    // Portrait
-    if height > width {
-        let h_ofs = (height - width) / 2.0;
-        (width / 8.0, 0.0, h_ofs)
-    // Landscape
-    } else {
-        let w_ofs = (width - height) / 2.0;
-        (height / 8.0, w_ofs, 0.0)
-    }
-}
+use super::input::get_dimensiuni_tabla;
 
 /// Deseneaza tabla de joc
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {

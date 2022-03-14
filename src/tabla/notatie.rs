@@ -63,7 +63,7 @@ pub(crate) fn encode_move(
 /// Rezultatul va fi *Some((src_i, src_j), (dest_i, dest_j))*
 /// sau *None* (stringul nu este valid).
 pub(crate) fn decode_move(
-    tabla:  &[[Patratel; 8]; 8],
+    tabla: &[[Patratel; 8]; 8],
     mov: &str,
     turn: Culoare,
 ) -> Option<((usize, usize), (usize, usize))> {

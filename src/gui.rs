@@ -15,9 +15,6 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
                 game_state.turn = Culoare::Alb;
                 game_state.game_state = GameState::Game;
                 game_state.tabla = generare::tabla_clasica();
-
-                // Rocada testing
-                //game_state.tabla = generare::tabla_from(["n", "", "", "", "", "", "", "R  K   R"]);
             }
 
             ui.vertical(|ui| {

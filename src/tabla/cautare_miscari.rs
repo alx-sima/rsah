@@ -1,4 +1,4 @@
-use crate::tabla::{in_board, Culoare, Tabla, TipPiesa};
+use super::{input::in_board, Culoare, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 fn rege(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {

@@ -1,13 +1,19 @@
 use std::{io::Read, net::TcpStream};
 
-use ggez::{event::MouseButton, graphics, Context};
+use ggez::{
+    conf,
+    event::{self, EventLoop, MouseButton},
+    graphics, Context,
+};
 use ggez_egui::EguiBackend;
 
-use tabla::{Culoare, TipPiesa};
+use tabla::{draw, Culoare, TipPiesa};
 
-mod cautare_miscari;
-mod draw;
+/// meniurile grafice pentru a selecta 
+/// jocul, editorul, conectare multiplayer
 mod gui;
+/// tabla de sah si orice legat de aceasta
+/// (afisare, piese, mutari, generare etc.)
 mod tabla;
 
 #[derive(PartialEq)]
@@ -42,9 +48,30 @@ struct State {
     egui_backend: EguiBackend,
     stream: Option<TcpStream>,
     address: Address,
-    /// Daca e true, meciul se joaca pe alt dispozitiv,
+    /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            egui_backend: EguiBackend::default(),
+            game_state: GameState::MainMenu,
+            miscari_disponibile: vec![],
+            istoric: vec![],
+            piesa_sel: None,
+            piesa_selectata_editor: TipPiesa::Pion,
+            tabla: Default::default(),
+            turn: Culoare::Alb,
+            stream: None,
+            address: Address {
+                ip: [127, 0, 0, 1],
+                port: 8080,
+            },
+            guest: false,
+        }
+    }
 }
 
 impl ggez::event::EventHandler<ggez::GameError> for State {
@@ -68,7 +95,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                         Ok(len) => {
                             let msg = std::str::from_utf8(&buf[..len]).unwrap();
                             if let Some((src_poz, dest_poz)) =
-                                tabla::istoric::decode_move(&self.tabla, msg, self.turn)
+                                tabla::notatie::decode_move(&self.tabla, msg, self.turn)
                             {
                                 // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
                                 tabla::game::muta(&mut self.tabla, src_poz, dest_poz);
@@ -148,38 +175,25 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 }
 
-fn main() -> ggez::GameResult {
-    let state = State {
-        egui_backend: EguiBackend::default(),
-        game_state: GameState::MainMenu,
-        miscari_disponibile: Vec::new(),
-        istoric: Vec::new(),
-        piesa_sel: None,
-        piesa_selectata_editor: TipPiesa::Pion,
-        tabla: Default::default(),
-        turn: Culoare::Alb,
-        stream: None,
-        address: Address {
-            ip: [127, 0, 0, 1],
-            port: 8080,
-        },
-        guest: false,
-    };
-
-    let setup = ggez::conf::WindowSetup::default()
+/// Configureaza aplicatia inainte de a o rula
+fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
+    let setup = conf::WindowSetup::default()
         .title("Chess")
         .icon("/images/appicon.png");
-    let mode = ggez::conf::WindowMode::default()
+    let mode = conf::WindowMode::default()
         .min_dimensions(800.0, 600.0)
         .resizable(true);
 
-    let c = ggez::conf::Conf::new();
-    let (ctx, event_loop) = ggez::ContextBuilder::new("rsah", "bamse")
+    let c = conf::Conf::new();
+    ggez::ContextBuilder::new("rsah", "bamse")
         .default_conf(c)
         .window_setup(setup)
         .window_mode(mode)
         .build()
-        .unwrap();
+}
 
-    ggez::event::run(ctx, event_loop, state);
+fn main() -> ggez::GameResult {
+    let state = State::default();
+    let (ctx, event_loop) = build_context()?;
+    event::run(ctx, event_loop, state);
 }

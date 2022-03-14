@@ -15,48 +15,12 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
             };
             // FIXME: urat:(
             match c.to_lowercase().to_string().as_str() {
-                "r" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Tura,
-                        culoare,
-                    })
-                }
-                "b" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Nebun,
-                        culoare,
-                    })
-                }
-                "n" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Cal,
-                        culoare,
-                    })
-                }
-                "q" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Regina,
-                        culoare,
-                    })
-                }
-                "k" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Rege,
-                        culoare,
-                    })
-                }
-                "p" => {
-                    tabla[i][j].piesa = Some(Piesa {
-                        mutat: false,
-                        tip: TipPiesa::Pion,
-                        culoare,
-                    })
-                }
+                "p" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Pion, culoare)),
+                "r" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Tura, culoare)),
+                "b" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Nebun, culoare)),
+                "n" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Cal, culoare)),
+                "k" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, culoare)),
+                "q" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Regina, culoare)),
                 _ => tabla[i][j].piesa = None,
             }
         }

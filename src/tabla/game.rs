@@ -1,10 +1,7 @@
 use std::{io::Write, net::TcpStream};
 
-use super::{istoric, set_atacat_field, Culoare, Patratel};
-
-use crate::{
-    cautare_miscari,
-    tabla::{in_board, Piesa, TipPiesa},
+use super::{
+    cautare_miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, TipPiesa,
 };
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
@@ -25,7 +22,7 @@ pub(crate) fn muta(
     // le sunt sterse celulele atacate si recalculate dupa mutare
     let pcs_to_reset = [p_old.clone().atacat, p_new.atacat].concat();
 
-    let mutare = istoric::encode_move(tabla, src_poz, dest_poz);
+    let mutare = notatie::encode_move(tabla, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
     cautare_miscari::clear_attack(tabla, src_poz.0, src_poz.1);
@@ -59,7 +56,7 @@ pub(crate) fn muta(
             // si in aceeasi directie.
             for i in [1, 2] {
                 let poz_tura = dest_poz.1 as i32 + i * dir;
-                if in_board(dest_poz.0 as i32, poz_tura) {
+                if input::in_board(dest_poz.0 as i32, poz_tura) {
                     if let Some(tura) = tabla[dest_poz.0][poz_tura as usize].piesa.clone() {
                         if tura.tip == TipPiesa::Tura {
                             println!("{} {}", dest_poz.0, poz_tura);
@@ -106,7 +103,7 @@ pub(crate) fn player_turn(
     reversed: bool,
 ) {
     // Daca clickul este in interiorul tablei
-    if let Some((dest_j, dest_i)) = super::get_square_under_mouse(ctx, reversed) {
+    if let Some((dest_j, dest_i)) = input::get_square_under_mouse(ctx, reversed) {
         // Daca exista o piesa selectata...
         if let Some(src_poz) = *piesa_sel {
             // Daca miscarea este valida, efectueaza mutarea
