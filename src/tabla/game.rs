@@ -2,7 +2,7 @@ use std::{io::Write, net::TcpStream};
 
 use super::{istoric, set_atacat_field, Culoare, Patratel};
 
-use crate::miscari;
+use crate::{miscari, tabla::Piesa};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
@@ -34,7 +34,10 @@ pub(crate) fn muta(
     }
 
     // Muta piesa
-    tabla[dest_poz.0][dest_poz.1] = p_old.clone();
+    tabla[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
+        mutat: true,
+        ..p_old.clone().piesa.unwrap()
+    });
     tabla[src_poz.0][src_poz.1] = Patratel::default();
 
     // Cauta miscarile disponibile ale piesei proaspat mutate

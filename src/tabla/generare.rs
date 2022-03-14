@@ -17,36 +17,42 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
             match c.to_lowercase().to_string().as_str() {
                 "r" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Tura,
                         culoare,
                     })
                 }
                 "b" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Nebun,
                         culoare,
                     })
                 }
                 "n" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Cal,
                         culoare,
                     })
                 }
                 "q" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Regina,
                         culoare,
                     })
                 }
                 "k" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Rege,
                         culoare,
                     })
                 }
                 "p" => {
                     tabla[i][j].piesa = Some(Piesa {
+                        mutat: false,
                         tip: TipPiesa::Pion,
                         culoare,
                     })

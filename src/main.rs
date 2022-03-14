@@ -9,9 +9,6 @@ mod gui;
 mod miscari;
 mod tabla;
 
-/// Latura unui patratel de pe tabla de sah
-const L: f32 = 50.0;
-
 #[derive(PartialEq)]
 enum GameState {
     MainMenu,
@@ -70,13 +67,18 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                         Ok(len) => {
                             let msg = std::str::from_utf8(&buf[..len]).unwrap();
                             if let Some((src_poz, dest_poz)) =
-                            tabla::istoric::decode_move(&self.tabla, msg, self.turn)
+                                tabla::istoric::decode_move(&self.tabla, msg, self.turn)
                             {
                                 // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                                tabla::game::muta(&mut self.tabla, &mut self.turn, src_poz, dest_poz);
+                                tabla::game::muta(
+                                    &mut self.tabla,
+                                    &mut self.turn,
+                                    src_poz,
+                                    dest_poz,
+                                );
                             }
                         }
-                        _ => {},
+                        _ => {}
                     }
                 }
             }
@@ -92,7 +94,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             draw::attack(self, ctx)?;
             if self.game_state == GameState::Game
                 || self.game_state == GameState::Multiplayer
-                && (self.turn == Culoare::Negru) == self.guest
+                    && (self.turn == Culoare::Negru) == self.guest
             {
                 if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
                     tabla::game::player_turn(
@@ -112,8 +114,15 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             draw::pieces(self, ctx)?;
         }
 
-        graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0], ))?;
+        graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0],))?;
         graphics::present(ctx)
+    }
+
+    /// Updateaza rezolutia logica a ecranului cand se schimba cea fizica,
+    /// altfel imaginile ar fi desenate scalate.
+    fn resize_event(&mut self, ctx: &mut ggez::Context, width: f32, height: f32) {
+        let screen_rect = graphics::Rect::new(0.0, 0.0, width, height);
+        graphics::set_screen_coordinates(ctx, screen_rect).unwrap();
     }
 
     // pt ca egui sa captureze mouseul
@@ -136,7 +145,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 }
 
-fn main() {
+fn main() -> ggez::GameResult {
     let state = State {
         egui_backend: EguiBackend::default(),
         game_state: GameState::MainMenu,
@@ -153,9 +162,19 @@ fn main() {
         },
         guest: false,
     };
+
+    let setup = ggez::conf::WindowSetup::default()
+        .title("Chess")
+        .icon("/images/appicon.png");
+    let mode = ggez::conf::WindowMode::default()
+        .min_dimensions(800.0, 600.0)
+        .resizable(true);
+
     let c = ggez::conf::Conf::new();
     let (ctx, event_loop) = ggez::ContextBuilder::new("rsah", "bamse")
         .default_conf(c)
+        .window_setup(setup)
+        .window_mode(mode)
         .build()
         .unwrap();
 

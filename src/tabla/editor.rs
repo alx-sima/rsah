@@ -11,7 +11,11 @@ pub(crate) fn place(
     culoare: Culoare,
 ) {
     if tabla[i][j].piesa.is_none() {
-        tabla[i][j].piesa = Some(Piesa { tip, culoare });
+        tabla[i][j].piesa = Some(Piesa {
+            tip,
+            culoare,
+            mutat: false,
+        });
     }
 }
 

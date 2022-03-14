@@ -1,4 +1,4 @@
-use crate::tabla::{in_board, Culoare, Patratel, Tabla, TipPiesa};
+use crate::tabla::{in_board, Culoare, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 fn rege(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
@@ -103,18 +103,19 @@ fn pion(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
     if tabla[i1][j].piesa.is_none() || full_scan {
         rez.push((i1, j));
 
-        // daca urmatoarele 2 patrate din fata pionului sunt libere, iar pionul este la prima miscare, acesta poate avansa 2 patrate
-        // TODO: fix lazy programming (daca se afla pe primele 2 randuri poate avansa 2 patrate) => doar la prima miscare a pionului poate avansa 2 patrate
+        // Daca urmatoarele 2 patrate din fata pionului sunt libere,
+        // iar pionul nu a fost deja mutat, acesta poate avansa 2 patrate.
         let i2 = (i1 as i32 + cul) as usize;
         if in_board(i2 as i32, j as i32) {
-            if ((i <= 1 && cul == 1) || (i >= 6 && cul == -1))
+            if !tabla[i][j].piesa.clone().unwrap().mutat
                 && (tabla[i2 as usize][j].piesa.is_none() || full_scan)
             {
                 rez.push((i2, j));
             }
         }
     }
-    // daca patratele din fata-stanga sau fata-dreapta sunt ocupate de o piesa inamica, miscarea e valabila
+
+    // Daca patratele din fata-stanga sau fata-dreapta sunt ocupate de o piesa inamica, miscarea e valabila
     for j1 in [j - 1, j + 1] {
         if in_board(i1 as i32, j1 as i32) {
             if let Some(victima) = &tabla[i1][j1].piesa {
@@ -137,11 +138,11 @@ fn pion(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
 /// deplasat liniar, in functie de versori
 // FIXME: nume mai bune pt parametru?
 fn cautare_in_linie(
-    tabla: &[[Patratel; 8]; 8],
+    tabla: &Tabla,
     i: i32,
     j: i32,
     versori: &[(i32, i32)],
-    a_ales_violenta: bool,
+    full_scan: bool,
 ) -> Vec<(usize, usize)> {
     let mut rez = Vec::new();
 
@@ -154,7 +155,7 @@ fn cautare_in_linie(
             if let Some(patrat_atacat) = &tabla[sumi][sumj].piesa {
                 if tabla[i as usize][j as usize].piesa.clone().unwrap().culoare
                     != patrat_atacat.culoare
-                    || a_ales_violenta
+                    || full_scan
                 {
                     rez.push((sumi, sumj));
                 }

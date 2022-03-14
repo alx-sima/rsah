@@ -14,7 +14,8 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             if ui.button("Start").clicked() {
                 game_state.turn = Culoare::Alb;
                 game_state.game_state = GameState::Game;
-                game_state.tabla = generare::tabla_clasica();
+                //game_state.tabla = generare::tabla_clasica();
+                game_state.tabla = generare::tabla_from(["", "", "", "", "", "", "", "R   K  R"]);
             }
 
             ui.vertical(|ui| {

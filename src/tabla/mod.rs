@@ -1,4 +1,4 @@
-use crate::{miscari, L};
+use crate::miscari;
 
 pub(crate) mod editor;
 pub(crate) mod game;
@@ -44,6 +44,7 @@ pub(crate) enum Culoare {
 pub(crate) struct Piesa {
     pub(crate) tip: TipPiesa,
     pub(crate) culoare: Culoare,
+    pub(crate) mutat: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -74,9 +75,18 @@ pub(crate) fn get_square_under_mouse(
     ctx: &mut ggez::Context,
     reversed: bool,
 ) -> Option<(usize, usize)> {
+    let (l, x_ofs, y_ofs) = crate::draw::get_dimensiuni_tabla(ctx);
     let cursor = ggez::input::mouse::position(ctx);
-    let x = (cursor.x / L) as i32;
-    let y = (cursor.y / L) as i32;
+
+    // "Translateaza" tabla a.i. sa aiba (0, 0) in stanga sus
+    let nx = cursor.x - x_ofs;
+    let ny = cursor.y - y_ofs;
+    if nx < 0.0 || ny < 0.0 {
+        return None;
+    }
+
+    let x = (nx / l) as i32;
+    let y = (ny / l) as i32;
     if in_board(x, y) {
         if reversed {
             Some((7 - x as usize, 7 - y as usize))
