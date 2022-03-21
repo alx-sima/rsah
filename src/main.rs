@@ -7,7 +7,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{draw, Culoare, TipPiesa};
+use tabla::{miscari, draw, Culoare, TipPiesa};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -98,7 +98,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                 tabla::notatie::decode_move(&self.tabla, msg, self.turn)
                             {
                                 // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz, false);
+                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz);
 
                                 // Randul urmatorului jucator
                                 // Schimba turn din alb in negru si din negru in alb
@@ -106,6 +106,8 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                     Culoare::Alb => Culoare::Negru,
                                     Culoare::Negru => Culoare::Alb,
                                 };
+
+                                miscari::verif_sah(&self.tabla, self.turn);
                             }
                         }
                         _ => {}

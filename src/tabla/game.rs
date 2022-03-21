@@ -1,19 +1,14 @@
 use std::{io::Write, net::TcpStream};
 
 use super::{
-    cautare_miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa,
+    miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa,
 };
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
-pub(crate) fn muta(
-    tabla: &mut Tabla,
-    src_poz: (usize, usize),
-    dest_poz: (usize, usize),
-    dry_run: bool,
-) -> String {
+pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize, usize)) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla[src_poz.0][src_poz.1].clone();
     // Viitoarea pozitie a piesei
@@ -26,11 +21,11 @@ pub(crate) fn muta(
     let mutare = notatie::encode_move(tabla, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
-    cautare_miscari::clear_attack(tabla, src_poz.0, src_poz.1);
+    miscari::clear_attack(tabla, src_poz.0, src_poz.1);
 
     // Stergerea pozitiilor atacate
     for (i, j) in &pcs_to_reset {
-        cautare_miscari::clear_attack(tabla, *i, *j);
+        miscari::clear_attack(tabla, *i, *j);
     }
 
     // Muta piesa
@@ -66,7 +61,6 @@ pub(crate) fn muta(
                                 tabla,
                                 (dest_poz.0, poz_tura as usize),
                                 (dest_poz.0, (dest_poz.1 as i32 - dir) as usize),
-                                false,
                             );
                         }
                     }
@@ -74,21 +68,6 @@ pub(crate) fn muta(
             }
         }
     }
-
-    if !dry_run {
-        cautare_miscari::verif_sah(tabla);
-    }
-
-    // FIXME: match_state nu ar tb sa tina sahul pt fiecare jucator?
-    // Adauga la istoric pentru miscarea curenta:
-    // - "+" in caz ca se afla in sah;
-    // - "#" in caz ca se afla in mat.
-    //if *match_state == MatchState::Sah {
-    //    mutare += "+";
-    //}
-    //if *match_state == MatchState::Mat {
-    //    mutare += "#";
-    //}
 
     mutare
 }
@@ -109,12 +88,7 @@ pub(crate) fn player_turn(
         if let Some(src_poz) = *piesa_sel {
             // Daca miscarea este valida, efectueaza mutarea
             if miscari_disponibile.contains(&(dest_i, dest_j)) {
-                let mov = muta(tabla, src_poz, (dest_i, dest_j), false);
-                istoric.push(mov.clone());
-
-                if let Some(stream) = stream {
-                    stream.write(mov.as_bytes()).unwrap();
-                }
+                let mut mov = muta(tabla, src_poz, (dest_i, dest_j));
 
                 // Randul urmatorului jucator
                 // Schimba turn din alb in negru si din negru in alb
@@ -122,6 +96,25 @@ pub(crate) fn player_turn(
                     Culoare::Alb => Culoare::Negru,
                     Culoare::Negru => Culoare::Alb,
                 };
+
+                if miscari::verif_sah(tabla, *turn) {
+                    // Daca e sah si nu exista miscari, e mat
+                    if !miscari::exista_miscari(tabla, *turn) {
+                        mov += "#";
+                    // altfel, e sah normal
+                    } else {
+                        mov += "+";
+                    }
+                // Daca nu e sah si nu exista miscari, e pat
+                } else if !miscari::exista_miscari(tabla, *turn) {
+                    // TODO
+                }
+
+                istoric.push(mov.clone());
+
+                if let Some(stream) = stream {
+                    stream.write(mov.as_bytes()).unwrap();
+                }
             }
             // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
             *piesa_sel = None;
@@ -133,9 +126,9 @@ pub(crate) fn player_turn(
                 if *turn == piesa.culoare {
                     *piesa_sel = Some((dest_i, dest_j));
                     let miscari =
-                        cautare_miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
+                        miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
 
-                    *miscari_disponibile = cautare_miscari::nu_provoaca_sah(
+                    *miscari_disponibile = miscari::nu_provoaca_sah(
                         tabla,
                         miscari.to_owned(),
                         (dest_i, dest_j),

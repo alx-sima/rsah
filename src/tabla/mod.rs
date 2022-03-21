@@ -1,6 +1,6 @@
 /// gasirea patratelelor atacate de o anumita piesa,
 /// sau a caror modificare o pot afecta
-pub(crate) mod cautare_miscari;
+pub(crate) mod miscari;
 /// desenarea tablei si a pieselor de pe aceasta
 pub(crate) mod draw;
 /// amplasarea pieselor (in modul editor)
@@ -100,7 +100,7 @@ impl Default for Patratel {
 
 /// Marcheaza patratele atacate de piesa de la *(i, j)*.
 pub(crate) fn set_atacat_field(tabla: &mut Tabla, i: usize, j: usize) {
-    for (x, y) in cautare_miscari::get_miscari(tabla, i as i32, j as i32, true) {
+    for (x, y) in miscari::get_miscari(tabla, i as i32, j as i32, true) {
         tabla[x][y].atacat.push((i, j));
     }
 }

@@ -51,6 +51,7 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
 /// Deseneaza piesele
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
+    
     for i in 0..8 {
         for j in 0..8 {
             let (i_pies, j_pies) = if state.guest { (7 - i, 7 - j) } else { (i, j) };
@@ -64,8 +65,8 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
                     ctx,
                     &img,
                     graphics::DrawParam::default()
-                        .dest([x_ofs + j as f32 * l + 5.0, y_ofs + i as f32 * l + 5.0])
-                        .scale([0.35, 0.35]),
+                        .dest([x_ofs + j as f32 * l + 6.0, y_ofs + i as f32 * l + 5.0])
+                        .scale([0.5, 0.5]),
                 )?;
             }
         }
