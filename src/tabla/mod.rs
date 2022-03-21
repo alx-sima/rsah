@@ -1,4 +1,4 @@
-/// gasirea patratelelor atacate de o anumita piesa, 
+/// gasirea patratelelor atacate de o anumita piesa,
 /// sau a caror modificare o pot afecta
 pub(crate) mod cautare_miscari;
 /// desenarea tablei si a pieselor de pe aceasta
@@ -80,7 +80,9 @@ impl Piesa {
 /// retine si pozitiile *(i, j)* pieselor care il ataca.
 #[derive(Clone, Debug)]
 pub(crate) struct Patratel {
+    /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
+    /// pozitiile (i, j) pieselor care ataca acest patrat
     pub(crate) atacat: Vec<(usize, usize)>,
 }
 

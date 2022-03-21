@@ -1,4 +1,4 @@
-use super::{input::in_board, Culoare, Tabla, TipPiesa};
+use super::{game::muta, input::in_board, Culoare, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 fn rege(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
@@ -249,6 +249,32 @@ pub(crate) fn verif_sah(tabla: &Tabla) {
     }
 }
 
+// TODO:
+pub(crate) fn nu_provoaca_sah(
+    tabla: &Tabla,
+    miscari: Vec<(usize, usize)>,
+    piesa: (usize, usize),
+    culoare: Culoare,
+) -> Vec<(usize, usize)> {
+    let mut rez = vec![];
+    for (i, j) in miscari {
+        // "Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah"
+        let mut backup = tabla.clone();
+        muta(&mut backup, (piesa.0, piesa.1), (i, j), true);
+        let poz_rege = get_poz_rege(&backup, culoare);
+        if !backup[poz_rege.0][poz_rege.1].atacat.iter().any(|(i, j)| {
+            if let Some(piesa) = &backup[*i][*j].piesa {
+                piesa.culoare != culoare
+            } else {
+                false
+            }
+        }) {
+            rez.push((i, j));
+        }
+    }
+    rez
+}
+
 /// Sterge din lista `atacat` piesa de pe pozitia (i, j),
 /// pentru fiecare celula la care poate ajunge (i, j)
 pub(crate) fn clear_attack(tabla: &mut Tabla, i: usize, j: usize) {
@@ -258,4 +284,19 @@ pub(crate) fn clear_attack(tabla: &mut Tabla, i: usize, j: usize) {
             tabla[x][y].atacat.retain(|(a, b)| !(*a == i && *b == j));
         }
     }
+}
+
+pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> (usize, usize) {
+    // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
+    // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
+    for i in 0..8 {
+        for j in 0..8 {
+            if let Some(piesa) = &tabla[i][j].piesa {
+                if piesa.tip == TipPiesa::Rege && piesa.culoare == culoare {
+                    return (i, j);
+                }
+            }
+        }
+    }
+    unreachable!();
 }

@@ -9,7 +9,7 @@ use ggez_egui::EguiBackend;
 
 use tabla::{draw, Culoare, TipPiesa};
 
-/// meniurile grafice pentru a selecta 
+/// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
 mod gui;
 /// tabla de sah si orice legat de aceasta
@@ -98,7 +98,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                                 tabla::notatie::decode_move(&self.tabla, msg, self.turn)
                             {
                                 // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz);
+                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz, false);
 
                                 // Randul urmatorului jucator
                                 // Schimba turn din alb in negru si din negru in alb

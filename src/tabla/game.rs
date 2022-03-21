@@ -1,7 +1,7 @@
 use std::{io::Write, net::TcpStream};
 
 use super::{
-    cautare_miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, TipPiesa,
+    cautare_miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa,
 };
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
@@ -9,9 +9,10 @@ use super::{
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
 pub(crate) fn muta(
-    tabla: &mut [[Patratel; 8]; 8],
+    tabla: &mut Tabla,
     src_poz: (usize, usize),
     dest_poz: (usize, usize),
+    dry_run: bool,
 ) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla[src_poz.0][src_poz.1].clone();
@@ -34,6 +35,7 @@ pub(crate) fn muta(
 
     // Muta piesa
     tabla[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
+        // Daca dry_run e false, piesa nu e mutata pe bune.
         mutat: true,
         ..p_old.clone().piesa.unwrap()
     });
@@ -64,6 +66,7 @@ pub(crate) fn muta(
                                 tabla,
                                 (dest_poz.0, poz_tura as usize),
                                 (dest_poz.0, (dest_poz.1 as i32 - dir) as usize),
+                                false,
                             );
                         }
                     }
@@ -71,7 +74,10 @@ pub(crate) fn muta(
             }
         }
     }
-    cautare_miscari::verif_sah(tabla);
+
+    if !dry_run {
+        cautare_miscari::verif_sah(tabla);
+    }
 
     // FIXME: match_state nu ar tb sa tina sahul pt fiecare jucator?
     // Adauga la istoric pentru miscarea curenta:
@@ -84,17 +90,12 @@ pub(crate) fn muta(
     //    mutare += "#";
     //}
 
-    println!("{}", &mutare);
-
-    for i in tabla {
-        println!("{:?}", i);
-    }
     mutare
 }
 
 pub(crate) fn player_turn(
     ctx: &mut ggez::Context,
-    tabla: &mut [[Patratel; 8]; 8],
+    tabla: &mut Tabla,
     piesa_sel: &mut Option<(usize, usize)>,
     miscari_disponibile: &mut Vec<(usize, usize)>,
     turn: &mut Culoare,
@@ -108,7 +109,7 @@ pub(crate) fn player_turn(
         if let Some(src_poz) = *piesa_sel {
             // Daca miscarea este valida, efectueaza mutarea
             if miscari_disponibile.contains(&(dest_i, dest_j)) {
-                let mov = muta(tabla, src_poz, (dest_i, dest_j));
+                let mov = muta(tabla, src_poz, (dest_i, dest_j), false);
                 istoric.push(mov.clone());
 
                 if let Some(stream) = stream {
@@ -131,8 +132,15 @@ pub(crate) fn player_turn(
             if let Some(piesa) = &tabla[dest_i][dest_j].piesa {
                 if *turn == piesa.culoare {
                     *piesa_sel = Some((dest_i, dest_j));
-                    *miscari_disponibile =
+                    let miscari =
                         cautare_miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
+
+                    *miscari_disponibile = cautare_miscari::nu_provoaca_sah(
+                        tabla,
+                        miscari.to_owned(),
+                        (dest_i, dest_j),
+                        *turn,
+                    );
                 }
             }
         }

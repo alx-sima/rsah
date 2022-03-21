@@ -1,11 +1,11 @@
-use super::{set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa};
+use super::{set_atacat_field, Culoare, Piesa, Tabla, TipPiesa};
 
 /// Genereaza layoutul tablei de sah dupa template.
 /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
 /// 'template' este un vector de stringuri, fiecare string
 /// marcand o linie, in loc sa fie un singur string separat de '\n')
 pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
-    let mut tabla: [[Patratel; 8]; 8] = Default::default();
+    let mut tabla: Tabla = Default::default();
     for (i, line) in template.iter().enumerate() {
         for (j, c) in line.chars().enumerate() {
             let culoare = if c.is_lowercase() {
@@ -32,6 +32,7 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
             set_atacat_field(&mut tabla, i, j);
         }
     }
+
     tabla
 }
 
