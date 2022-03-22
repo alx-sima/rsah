@@ -7,7 +7,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{miscari, draw, Culoare, TipPiesa};
+use tabla::{draw, miscari, Culoare, TipPiesa};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -22,11 +22,6 @@ enum GameState {
     Game,
     Editor,
     Multiplayer,
-}
-
-struct Address {
-    ip: [u8; 4],
-    port: u16,
 }
 
 /// Variabilele globale ale jocului
@@ -46,8 +41,10 @@ struct State {
     piesa_sel: Option<(usize, usize)>,
     piesa_selectata_editor: TipPiesa,
     egui_backend: EguiBackend,
+    /// Conexiunea la celalalt jucator (pt multiplayer)
     stream: Option<TcpStream>,
-    address: Address,
+    /// Adresa IP a jocului hostat
+    address: String,
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
@@ -56,19 +53,16 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         State {
+            address: String::from("127.0.0.1:8080"),
+            piesa_selectata_editor: TipPiesa::Pion,
             egui_backend: EguiBackend::default(),
             game_state: GameState::MainMenu,
             miscari_disponibile: vec![],
-            istoric: vec![],
-            piesa_sel: None,
-            piesa_selectata_editor: TipPiesa::Pion,
             tabla: Default::default(),
             turn: Culoare::Alb,
+            istoric: vec![],
+            piesa_sel: None,
             stream: None,
-            address: Address {
-                ip: [127, 0, 0, 1],
-                port: 8080,
-            },
             guest: false,
         }
     }
@@ -77,7 +71,6 @@ impl Default for State {
 impl ggez::event::EventHandler<ggez::GameError> for State {
     fn update(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         let egui_ctx = self.egui_backend.ctx();
-        // FIXME: fixeaza meniul pe ecran
         match self.game_state {
             GameState::MainMenu => {
                 gui::main_menu(self, &egui_ctx, ctx);
@@ -86,7 +79,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 gui::game(self, &egui_ctx);
             }
             GameState::Editor => {
-                gui::editor(self, &egui_ctx);
+                gui::editor(self, &egui_ctx, ctx);
             }
             GameState::Multiplayer => {
                 if (self.turn == Culoare::Negru) != self.guest {
@@ -157,7 +150,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         graphics::set_screen_coordinates(ctx, screen_rect).unwrap();
     }
 
-    // pt ca egui sa captureze mouseul
+    // =================== Pt. ca egui sa captureze mouseul ===================
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,

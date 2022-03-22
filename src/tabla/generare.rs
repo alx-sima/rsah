@@ -44,6 +44,40 @@ pub(crate) fn tabla_clasica() -> Tabla {
     ])
 }
 
+pub(crate) fn tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
+    let mut tabla = Tabla::default();
+    for piesa in piese {
+        let i = piesa.chars().nth(0).unwrap() as usize - 'a' as usize;
+        let j = piesa.chars().nth(1).unwrap() as usize - '1' as usize;
+        let tip = piesa.chars().nth(2).unwrap();
+        let culoare = if tip.is_uppercase() {
+            Culoare::Alb
+        } else {
+            Culoare::Negru
+        };
+        let tip = match tip.to_lowercase().to_string().as_str() {
+            "p" => TipPiesa::Pion,
+            "r" => TipPiesa::Tura,
+            "b" => TipPiesa::Nebun,
+            "n" => TipPiesa::Cal,
+            "k" => TipPiesa::Rege,
+            "q" => TipPiesa::Regina,
+            _ => panic!("Tipul piesei {} nu e valid", piesa),
+        };
+
+        tabla[i][j].piesa = Some(Piesa::new(tip, culoare));
+    }
+
+    // Calculeaza pozitiile atacate
+    for i in 0..8 {
+        for j in 0..8 {
+            miscari::set_influenta(&mut tabla, i, j);
+        }
+    }
+
+    tabla
+}
+
 /// Genereaza o tabla de joc aleatorie
 pub(crate) fn _tabla_random() -> Tabla {
     todo!()
