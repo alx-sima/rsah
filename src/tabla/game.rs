@@ -1,8 +1,6 @@
 use std::{io::Write, net::TcpStream};
 
-use super::{
-    miscari, input, notatie, set_atacat_field, Culoare, Patratel, Piesa, Tabla, TipPiesa,
-};
+use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
@@ -16,31 +14,30 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
-    let pcs_to_reset = [p_old.clone().atacat, p_new.atacat].concat();
+    let pcs_to_reset = [p_old.clone().afecteaza, p_new.afecteaza].concat();
 
     let mutare = notatie::encode_move(tabla, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
-    miscari::clear_attack(tabla, src_poz.0, src_poz.1);
+    miscari::clear_influenta(tabla, src_poz);
 
     // Stergerea pozitiilor atacate
-    for (i, j) in &pcs_to_reset {
-        miscari::clear_attack(tabla, *i, *j);
+    for poz in &pcs_to_reset {
+        miscari::clear_influenta(tabla, *poz);
     }
 
     // Muta piesa
     tabla[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
-        // Daca dry_run e false, piesa nu e mutata pe bune.
         mutat: true,
         ..p_old.clone().piesa.unwrap()
     });
     tabla[src_poz.0][src_poz.1] = Patratel::default();
 
     // Cauta miscarile disponibile ale piesei proaspat mutate
-    set_atacat_field(tabla, dest_poz.0, dest_poz.1);
+    miscari::set_influenta(tabla, dest_poz.0, dest_poz.1);
     // Actualizeaza miscari disponibile pentru piesele care atacau pozitiile
     for (i, j) in pcs_to_reset {
-        set_atacat_field(tabla, i, j);
+        miscari::set_influenta(tabla, i, j);
     }
 
     if p_old.piesa.unwrap().tip == TipPiesa::Rege {
@@ -100,14 +97,17 @@ pub(crate) fn player_turn(
                 if miscari::verif_sah(tabla, *turn) {
                     // Daca e sah si nu exista miscari, e mat
                     if !miscari::exista_miscari(tabla, *turn) {
+                        println!("{:?} e in mat", *turn);
                         mov += "#";
                     // altfel, e sah normal
                     } else {
+                        println!("{:?} e in sah", *turn);
                         mov += "+";
                     }
                 // Daca nu e sah si nu exista miscari, e pat
                 } else if !miscari::exista_miscari(tabla, *turn) {
                     // TODO
+                    println!("{:?} e in pat", *turn);
                 }
 
                 istoric.push(mov.clone());
@@ -125,8 +125,7 @@ pub(crate) fn player_turn(
             if let Some(piesa) = &tabla[dest_i][dest_j].piesa {
                 if *turn == piesa.culoare {
                     *piesa_sel = Some((dest_i, dest_j));
-                    let miscari =
-                        miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
+                    let miscari = miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
 
                     *miscari_disponibile = miscari::nu_provoaca_sah(
                         tabla,

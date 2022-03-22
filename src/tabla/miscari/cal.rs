@@ -1,7 +1,7 @@
-use crate::tabla::{Tabla, input::in_board};
+use crate::tabla::{Tabla, input::in_board, PozitieVerificata};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de la (i, j)
-pub(super) fn get(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
+pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieVerificata> {
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
@@ -19,7 +19,7 @@ pub(super) fn get(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize,
             if tabla[sumi][sumj].piesa.is_some() {
                 if tabla[ui][uj].piesa.clone().unwrap().culoare
                     != tabla[sumi][sumj].piesa.clone().unwrap().culoare
-                    || full_scan
+                    || tot_ce_afecteaza
                 {
                     rez.push((sumi, sumj));
                 }

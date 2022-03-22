@@ -1,4 +1,4 @@
-use super::{game::muta, input::in_board, Culoare, Tabla, TipPiesa};
+use super::{game::muta, input::in_board, Culoare, PozitieVerificata, Tabla, TipPiesa};
 
 mod cal;
 mod nebun;
@@ -15,7 +15,7 @@ fn cautare_in_linie(
     i: i32,
     j: i32,
     versori: &[(i32, i32)],
-    full_scan: bool,
+    tot_ce_afecteaza: bool,
 ) -> Vec<(usize, usize)> {
     let mut rez = Vec::new();
 
@@ -28,7 +28,7 @@ fn cautare_in_linie(
             if let Some(patrat_atacat) = &tabla[sumi][sumj].piesa {
                 if tabla[i as usize][j as usize].piesa.clone().unwrap().culoare
                     != patrat_atacat.culoare
-                    || full_scan
+                    || tot_ce_afecteaza
                 {
                     rez.push((sumi, sumj));
                 }
@@ -42,17 +42,63 @@ fn cautare_in_linie(
     rez
 }
 
-/// Returneaza o *lista[(linie, coloana)]* cu toate patratele in care se poate muta piesa de la *(i, j)*.
-/// Daca *full_scan* e setat, se returneaza **toate** celulele ale carui update ar putea afecta piesa.
-pub(crate) fn get_miscari(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec<(usize, usize)> {
-    if let Some(piesa) = &tabla[i as usize][j as usize].piesa {
+/// Returneaza o *lista de (linie, coloana)* cu toate patratele in care se poate muta piesa de la *(i, j)*
+/// (**include piesele pe care le ataca**).
+/// Daca *tot_ce_afecteaza* e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
+pub(crate) fn get_miscari(
+    tabla: &Tabla,
+    i: i32,
+    j: i32,
+    tot_ce_afecteaza: bool,
+) -> Vec<PozitieVerificata> {
+    if !in_board(i, j) {
+        return Vec::new();
+    }
+
+    let i = i as usize;
+    let j = j as usize;
+
+    if let Some(piesa) = &tabla[i][j].piesa {
         match piesa.tip {
-            TipPiesa::Pion => pion::get(tabla, i, j, full_scan),
-            TipPiesa::Tura => tura::get(tabla, i, j, full_scan),
-            TipPiesa::Cal => cal::get(tabla, i, j, full_scan),
-            TipPiesa::Nebun => nebun::get(tabla, i, j, full_scan),
-            TipPiesa::Regina => regina::get(tabla, i, j, full_scan),
-            TipPiesa::Rege => rege::get(tabla, i, j, full_scan),
+            // Pionul poate sa avanseze sau sa captureze pe diagonala
+            TipPiesa::Pion => [
+                pion::get(tabla, i as i32, j as i32, tot_ce_afecteaza),
+                pion::ataca(tabla, (i, j)),
+            ]
+            .concat(),
+            TipPiesa::Tura => tura::get(tabla, i as i32, j as i32, tot_ce_afecteaza),
+            TipPiesa::Cal => cal::get(tabla, i as i32, j as i32, tot_ce_afecteaza),
+            TipPiesa::Nebun => nebun::get(tabla, i as i32, j as i32, tot_ce_afecteaza),
+            TipPiesa::Regina => regina::get(tabla, i as i32, j as i32, tot_ce_afecteaza),
+            TipPiesa::Rege => [
+                rege::rocada(tabla, i as i32, j as i32),
+                rege::ataca(tabla, i as i32, j as i32, tot_ce_afecteaza),
+            ]
+            .concat(),
+        }
+    // Daca patratul e gol, returneaza o lista goala
+    } else {
+        Vec::new()
+    }
+}
+
+/// Pentru piesa de la (i, j), daca exista, returneaza o lista cu toate pozitiile pe care le ataca.
+pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieVerificata> {
+    if !in_board(i, j) {
+        return Vec::new();
+    }
+
+    let i = i as usize;
+    let j = j as usize;
+
+    if let Some(piesa) = &tabla[i][j].piesa {
+        match piesa.tip {
+            TipPiesa::Pion => pion::ataca(tabla, (i, j)),
+            // Regele ataca doar patratele din jurul lui,
+            // iar get_miscari ar fi dat si pozitiile pentru rocada.
+            TipPiesa::Rege => rege::ataca(tabla, i as i32, j as i32, false),
+            // Restul pieselor ataca toate pozitiile pe care se pot misca.
+            _ => get_miscari(tabla, i as i32, j as i32, false),
         }
     // Daca patratul e gol, returneaza o lista goala
     } else {
@@ -64,17 +110,7 @@ pub(crate) fn get_miscari(tabla: &Tabla, i: i32, j: i32, full_scan: bool) -> Vec
 /// (campul `atacat` de pe celula lui nu e nul pentru culoarea inamica)
 pub(crate) fn verif_sah(tabla: &Tabla, culoare: Culoare) -> bool {
     let (i_rege, j_rege) = get_poz_rege(tabla, culoare);
-    if tabla[i_rege][j_rege].atacat.iter().any(|(i, j)| {
-        if let Some(piesa) = &tabla[*i][*j].piesa {
-            piesa.culoare != culoare
-        } else {
-            false
-        }
-    }) {
-        println!("{:?} este in sah!", culoare);
-        return true;
-    }
-    false
+    tabla[i_rege][j_rege].atacat.len() > 0
 }
 
 /// Verifica daca jucatorul *culoare* mai are miscari disponibile.
@@ -96,7 +132,8 @@ pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     return false;
 }
 
-// TODO:
+/// Filtreaza vectorul miscari, ramanand doar cele care nu provoaca sah pentru regele propriu,
+/// sau, daca acesta e deja in sah, doar cele care il scot.
 pub(crate) fn nu_provoaca_sah(
     tabla: &Tabla,
     miscari: Vec<(usize, usize)>,
@@ -122,18 +159,35 @@ pub(crate) fn nu_provoaca_sah(
     rez
 }
 
-/// Sterge din lista `atacat` piesa de pe pozitia (i, j),
-/// pentru fiecare celula la care poate ajunge (i, j)
-pub(crate) fn clear_attack(tabla: &mut Tabla, i: usize, j: usize) {
-    if let Some(_) = &tabla[i][j].piesa {
-        for (x, y) in get_miscari(&tabla, i as i32, j as i32, true) {
-            // Sterge atacul piesei de pe celula (i, j)
-            tabla[x][y].atacat.retain(|(a, b)| !(*a == i && *b == j));
-        }
+/// Marcheaza celulele atacate de (i, j) si care afecteaza piesa.
+pub(crate) fn set_influenta(tabla: &mut Tabla, i: usize, j: usize) {
+    // Seteaza patratele care pot afecta piesa prin modificarea lor.
+    for (x, y) in get_miscari(tabla, i as i32, j as i32, true) {
+        tabla[x][y].afecteaza.push((i, j));
+    }
+
+    // Seteaza patratele care sunt atacate de piesa.
+    for (x, y) in get_atacat(tabla, i as i32, j as i32) {
+        tabla[x][y].atacat.push((i, j));
     }
 }
 
-pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> (usize, usize) {
+/// Inversul la `set_influenta`.
+pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: PozitieVerificata) {
+    // Sterge din lista de piese afectate a celulei (x, y) piesa.
+    for (x, y) in get_miscari(&tabla, poz.0 as i32, poz.1 as i32, true) {
+        tabla[x][y].afecteaza.retain(|k| *k != poz);
+    }
+
+    // Analog din lista de piese atacate.
+    for (x, y) in get_atacat(&tabla, poz.0 as i32, poz.0 as i32) {
+        tabla[x][y].afecteaza.retain(|k| *k != poz);
+    }
+}
+
+/// Returneaza pozitia regelui de culoare *culoare*.
+/// DEPRECATED: e doar pt ca a fost mai usor decat sa retinem pozitia regelui intr-un alt field.
+pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> PozitieVerificata {
     // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
     // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
     for i in 0..8 {

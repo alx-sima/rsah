@@ -1,6 +1,3 @@
-/// gasirea patratelelor atacate de o anumita piesa,
-/// sau a caror modificare o pot afecta
-pub(crate) mod miscari;
 /// desenarea tablei si a pieselor de pe aceasta
 pub(crate) mod draw;
 /// amplasarea pieselor (in modul editor)
@@ -14,6 +11,9 @@ pub(crate) mod generare;
 /// procesarea clickurilor si centrarea tablei
 /// in functie de dimensiunile aplicatiei
 pub(crate) mod input;
+/// gasirea patratelelor atacate de o anumita piesa,
+/// sau a caror modificare o pot afecta
+pub(crate) mod miscari;
 /// deducerea notatiei algebrice
 /// dintr-o miscare (sau invers)
 pub(crate) mod notatie;
@@ -82,8 +82,10 @@ impl Piesa {
 pub(crate) struct Patratel {
     /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
-    /// pozitiile (i, j) pieselor care ataca acest patrat
+    /// pozitiile (i, j) pieselor care ataca acest patrat;
     pub(crate) atacat: Vec<(usize, usize)>,
+    /// piesele care, perin modificarea acestui patrat, pot fi afectate
+    pub(crate) afecteaza: Vec<(usize, usize)>,
 }
 
 /// O **tabla** de sah este o matrice 8x8 de *patratele*.
@@ -94,13 +96,11 @@ impl Default for Patratel {
         Patratel {
             piesa: None,
             atacat: vec![],
+            afecteaza: vec![],
         }
     }
 }
 
-/// Marcheaza patratele atacate de piesa de la *(i, j)*.
-pub(crate) fn set_atacat_field(tabla: &mut Tabla, i: usize, j: usize) {
-    for (x, y) in miscari::get_miscari(tabla, i as i32, j as i32, true) {
-        tabla[x][y].atacat.push((i, j));
-    }
-}
+
+/// Coordonatele patratelor care sunt garantate sa existe si sa fie valide.
+pub type PozitieVerificata = (usize, usize);

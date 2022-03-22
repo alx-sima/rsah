@@ -1,4 +1,4 @@
-use super::{set_atacat_field, Culoare, Piesa, Tabla, TipPiesa};
+use super::{miscari, Culoare, Piesa, Tabla, TipPiesa};
 
 /// Genereaza layoutul tablei de sah dupa template.
 /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
@@ -29,7 +29,7 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
     // Calculeaza pozitiile atacate
     for i in 0..8 {
         for j in 0..8 {
-            set_atacat_field(&mut tabla, i, j);
+            miscari::set_influenta(&mut tabla, i, j);
         }
     }
 
