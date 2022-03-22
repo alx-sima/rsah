@@ -1,8 +1,8 @@
-use super::{game::muta, input::in_board, Culoare, PozitieVerificata, Tabla, TipPiesa};
+use super::{game::muta, input::in_board, Culoare, PozitieSafe, Tabla, TipPiesa};
 
 mod cal;
 mod nebun;
-mod pion;
+pub(crate) mod pion;
 mod rege;
 mod regina;
 mod tura;
@@ -50,7 +50,7 @@ pub(crate) fn get_miscari(
     i: i32,
     j: i32,
     tot_ce_afecteaza: bool,
-) -> Vec<PozitieVerificata> {
+) -> Vec<PozitieSafe> {
     if !in_board(i, j) {
         return Vec::new();
     }
@@ -83,7 +83,7 @@ pub(crate) fn get_miscari(
 }
 
 /// Pentru piesa de la (i, j), daca exista, returneaza o lista cu toate pozitiile pe care le ataca.
-pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieVerificata> {
+pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieSafe> {
     if !in_board(i, j) {
         return Vec::new();
     }
@@ -173,7 +173,7 @@ pub(crate) fn set_influenta(tabla: &mut Tabla, i: usize, j: usize) {
 }
 
 /// Inversul la `set_influenta`.
-pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: PozitieVerificata) {
+pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: PozitieSafe) {
     // Sterge din lista de piese afectate a celulei (x, y) piesa.
     for (x, y) in get_miscari(&tabla, poz.0 as i32, poz.1 as i32, true) {
         tabla[x][y].afecteaza.retain(|k| *k != poz);
@@ -187,7 +187,7 @@ pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: PozitieVerificata) {
 
 /// Returneaza pozitia regelui de culoare *culoare*.
 /// DEPRECATED: e doar pt ca a fost mai usor decat sa retinem pozitia regelui intr-un alt field.
-pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> PozitieVerificata {
+pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> PozitieSafe {
     // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
     // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
     for i in 0..8 {

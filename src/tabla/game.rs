@@ -14,7 +14,19 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
-    let pcs_to_reset = [p_old.clone().afecteaza, p_new.afecteaza].concat();
+    let mut pcs_to_reset = [p_old.clone().afecteaza, p_new.afecteaza].concat();
+
+    // Mutare en passant (scris noaptea tarziu, nsh ce face)
+    if let Some(piesa) = p_old.clone().piesa {
+        if piesa.tip == TipPiesa::Pion {
+            // Pionul se muta doar pe o singura linie
+            if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
+                tabla[dest_poz.0][dest_poz.1].piesa = tabla[src_poz.0][dest_poz.1].piesa.clone();
+                pcs_to_reset.append(&mut tabla[dest_poz.0][dest_poz.1].afecteaza);
+                tabla[src_poz.0][dest_poz.1].piesa = None;
+            }
+        }
+    }
 
     let mutare = notatie::encode_move(tabla, src_poz, dest_poz);
 
@@ -40,7 +52,8 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
         miscari::set_influenta(tabla, i, j);
     }
 
-    if p_old.piesa.unwrap().tip == TipPiesa::Rege {
+    // Verificare pentru rocada
+    if p_old.piesa.clone().unwrap().tip == TipPiesa::Rege {
         let dist = dest_poz.1 as i32 - src_poz.1 as i32;
         if dist.abs() == 2 {
             // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada
@@ -63,6 +76,14 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
                     }
                 }
             }
+        }
+    }
+
+    // Daca pionul a fost mutat 2 patratele, seteaza fieldul ampasant
+    if p_old.piesa.unwrap().tip == TipPiesa::Pion {
+        let dist = dest_poz.0 as i32 - src_poz.0 as i32;
+        if dist.abs() == 2 {
+            tabla[dest_poz.0][dest_poz.1].ampasant = true;
         }
     }
 
@@ -127,12 +148,8 @@ pub(crate) fn player_turn(
                     *piesa_sel = Some((dest_i, dest_j));
                     let miscari = miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
 
-                    *miscari_disponibile = miscari::nu_provoaca_sah(
-                        tabla,
-                        miscari.to_owned(),
-                        (dest_i, dest_j),
-                        *turn,
-                    );
+                    *miscari_disponibile =
+                        miscari::nu_provoaca_sah(tabla, miscari, (dest_i, dest_j), *turn);
                 }
             }
         }

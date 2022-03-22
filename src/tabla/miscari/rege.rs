@@ -1,4 +1,4 @@
-use crate::tabla::{input::in_board, PozitieVerificata, Tabla, TipPiesa};
+use crate::tabla::{input::in_board, PozitieSafe, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 pub(super) fn ataca(
@@ -6,7 +6,7 @@ pub(super) fn ataca(
     i: i32,
     j: i32,
     tot_ce_afecteaza: bool,
-) -> Vec<PozitieVerificata> {
+) -> Vec<PozitieSafe> {
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
@@ -35,7 +35,7 @@ pub(super) fn ataca(
 }
 
 /// pozitiile unde, daca este mutat regele, se face rocada
-pub(super) fn rocada(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieVerificata> {
+pub(super) fn rocada(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieSafe> {
     let mut rez = Vec::new();
     // Daca regele nu a fost mutat, urmatoarele 2 patratele in stanga/dreapta sunt libere
     // si neatacate si la inca 1/2 patratele se afla o tura, nemutata, se poate face rocada.

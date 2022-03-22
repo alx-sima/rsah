@@ -1,6 +1,6 @@
 use crate::tabla::TipPiesa;
 
-use super::{Culoare, Patratel};
+use super::{Culoare, Patratel, Tabla};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -63,7 +63,7 @@ pub(crate) fn encode_move(
 /// Rezultatul va fi *Some((src_i, src_j), (dest_i, dest_j))*
 /// sau *None* (stringul nu este valid).
 pub(crate) fn decode_move(
-    tabla: &[[Patratel; 8]; 8],
+    tabla: &Tabla,
     mov: &str,
     turn: Culoare,
 ) -> Option<((usize, usize), (usize, usize))> {
@@ -109,7 +109,7 @@ pub(crate) fn decode_move(
         //  - de aceeasi culoare cu jucatorul curent;
         //  - care e de acelasi tip cu piesa mutata;
         //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
-        for (i, j) in &tabla[pozi][pozj].atacat {
+        for (i, j) in &tabla[pozi][pozj].afecteaza {
             println!("{} {}", i, j);
             if let Some(piesa) = &tabla[*i][*j].piesa {
                 println!("({},{}):{:?}", i, j, piesa);

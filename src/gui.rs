@@ -24,7 +24,7 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
                 if ui.button("Start").clicked() {
                     game_state.turn = Culoare::Alb;
                     game_state.game_state = GameState::Game;
-                    game_state.tabla = generare::tabla_cu_pozitii(vec!["a1k", "a3K", "h3Q", "b8Q"]);
+                    game_state.tabla = generare::tabla_clasica();
                 }
 
                 ui.label("Multiplayer");

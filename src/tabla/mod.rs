@@ -55,6 +55,7 @@ pub(crate) enum Culoare {
     Negru,
 }
 
+/// o piesa de pe tabla
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Piesa {
     /// ce piesa e
@@ -83,9 +84,11 @@ pub(crate) struct Patratel {
     /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
     /// pozitiile (i, j) pieselor care ataca acest patrat;
-    pub(crate) atacat: Vec<(usize, usize)>,
-    /// piesele care, perin modificarea acestui patrat, pot fi afectate
-    pub(crate) afecteaza: Vec<(usize, usize)>,
+    pub(crate) atacat: Vec<PozitieSafe>,
+    /// piesele care, prin modificarea acestui patrat, pot fi afectate
+    pub(crate) afecteaza: Vec<PozitieSafe>,
+    /// piesa e pion si s-a mutat 2 patratele (mare greseala)
+    ampasant: bool,
 }
 
 /// O **tabla** de sah este o matrice 8x8 de *patratele*.
@@ -94,13 +97,13 @@ pub(crate) type Tabla = [[Patratel; 8]; 8];
 impl Default for Patratel {
     fn default() -> Self {
         Patratel {
-            piesa: None,
-            atacat: vec![],
             afecteaza: vec![],
+            ampasant: false,
+            atacat: vec![],
+            piesa: None,
         }
     }
 }
 
-
 /// Coordonatele patratelor care sunt garantate sa existe si sa fie valide.
-pub type PozitieVerificata = (usize, usize);
+pub type PozitieSafe = (usize, usize);

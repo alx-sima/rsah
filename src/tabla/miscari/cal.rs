@@ -1,7 +1,7 @@
-use crate::tabla::{Tabla, input::in_board, PozitieVerificata};
+use crate::tabla::{Tabla, input::in_board, PozitieSafe};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de la (i, j)
-pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieVerificata> {
+pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
     let mut rez = Vec::new();
     let ui = i as usize;
     let uj = j as usize;
