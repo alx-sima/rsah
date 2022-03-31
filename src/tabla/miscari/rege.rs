@@ -1,7 +1,7 @@
 use crate::tabla::{input::in_board, PozitieSafe, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
-pub(super) fn ataca(
+pub(super) fn get(
     tabla: &Tabla,
     i: i32,
     j: i32,
@@ -57,6 +57,7 @@ pub(super) fn rocada(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieSafe> {
                             for k in 1..dtura {
                                 // Explica asta daca poti
                                 if tabla[i as usize][(j + dir * k) as usize].piesa.is_some()
+                                // FIXME
                                     || tabla[i as usize][(j + dir * k) as usize].atacat.len() > 0
                                 {
                                     ok = false;

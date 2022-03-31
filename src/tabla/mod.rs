@@ -83,7 +83,7 @@ impl Piesa {
 pub(crate) struct Patratel {
     /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
-    /// pozitiile (i, j) pieselor care ataca acest patrat;
+    /// pozitiile (i, j) pieselor care ataca acest patrat (indiferent de culoare)
     pub(crate) atacat: Vec<PozitieSafe>,
     /// piesele care, prin modificarea acestui patrat, pot fi afectate
     pub(crate) afecteaza: Vec<PozitieSafe>,

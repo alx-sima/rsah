@@ -19,11 +19,15 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     // Mutare en passant (scris noaptea tarziu, nsh ce face)
     if let Some(piesa) = p_old.clone().piesa {
         if piesa.tip == TipPiesa::Pion {
-            // Pionul se muta doar pe o singura linie
+            // Pionul se muta doar pe o singura linie (cand nu ataca).
             if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
-                tabla[dest_poz.0][dest_poz.1].piesa = tabla[src_poz.0][dest_poz.1].piesa.clone();
-                pcs_to_reset.append(&mut tabla[dest_poz.0][dest_poz.1].afecteaza);
-                tabla[src_poz.0][dest_poz.1].piesa = None;
+                let pion_luat = (src_poz.0, dest_poz.1);
+                tabla[dest_poz.0][dest_poz.1].piesa = tabla[pion_luat.0][pion_luat.1].piesa.clone();
+
+                pcs_to_reset.append(&mut tabla[pion_luat.0][pion_luat.1].afecteaza);
+                pcs_to_reset.append(&mut tabla[pion_luat.0][pion_luat.1].atacat);
+
+                tabla[pion_luat.0][pion_luat.1].piesa = None;
             }
         }
     }
@@ -46,10 +50,10 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     tabla[src_poz.0][src_poz.1] = Patratel::default();
 
     // Cauta miscarile disponibile ale piesei proaspat mutate
-    miscari::set_influenta(tabla, dest_poz.0, dest_poz.1);
-    // Actualizeaza miscari disponibile pentru piesele care atacau pozitiile
+    miscari::set_influenta(tabla, dest_poz);
+    // Actualizeaza miscarile disponibile pentru piesele care trebuie updatate
     for (i, j) in pcs_to_reset {
-        miscari::set_influenta(tabla, i, j);
+        miscari::set_influenta(tabla, (i, j));
     }
 
     // Verificare pentru rocada
@@ -146,7 +150,7 @@ pub(crate) fn player_turn(
             if let Some(piesa) = &tabla[dest_i][dest_j].piesa {
                 if *turn == piesa.culoare {
                     *piesa_sel = Some((dest_i, dest_j));
-                    let miscari = miscari::get_miscari(tabla, dest_i as i32, dest_j as i32, false);
+                    let miscari = miscari::get_miscari(tabla, (dest_i, dest_j), false);
 
                     *miscari_disponibile =
                         miscari::nu_provoaca_sah(tabla, miscari, (dest_i, dest_j), *turn);

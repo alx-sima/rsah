@@ -1,10 +1,13 @@
-use crate::tabla::{Tabla, input::in_board, PozitieSafe};
+use crate::tabla::{input::in_board, PozitieSafe, Tabla};
 
-/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de la (i, j)
-pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
-    let mut rez = Vec::new();
-    let ui = i as usize;
-    let uj = j as usize;
+/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe *poz*
+pub(super) fn get(tabla: &Tabla, poz: PozitieSafe, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
+    let mut rez = vec![];
+
+    // FIXME:
+    let (ui, uj) = poz;
+    let i = ui as i32;
+    let j = uj as i32;
 
     // folosim vectorii de pozitie dx si dy pentru a genera toate miscarile posibile in forma de L
     // (2 patrate pe orizontala, 1 patrate pe verticala / 2 patrate pe verticala si 1 patrate pe orizontala)

@@ -36,9 +36,12 @@ pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<
     rez
 }
 
-/// Returneaza pozitiile pe care le poate ataca pionul de la *(i, j)*.
-pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe) -> Vec<PozitieSafe> {
+/// Returneaza pozitiile pe care le poate ataca pionul.
+/// *pe_bune* inseamna ca trebuie sa existe o piesa atacata.
+// TODO: nume mai sugestiv
+pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
     let mut rez = vec![];
+
     let culoare = tabla[poz.0][poz.1].piesa.clone().unwrap().culoare;
     let i = if culoare == Culoare::Alb {
         poz.0 - 1
@@ -49,6 +52,13 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe) -> Vec<PozitieSafe> {
     for dir in [-1, 1] {
         let j = (poz.1 as i32 + dir) as usize;
         if in_board(i as i32, j as i32) {
+            // Daca cautarea nu este pe bune, nu are de ce sa se verifice
+            // daca piesa exista sau (daca poate face en passant - citation needed).
+            if !pe_bune {
+                rez.push((i, j));
+                continue;
+            }
+
             if let Some(victima) = &tabla[i][j].piesa {
                 if victima.culoare != culoare {
                     rez.push((i, j));
@@ -62,5 +72,6 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe) -> Vec<PozitieSafe> {
             }
         }
     }
+
     rez
 }

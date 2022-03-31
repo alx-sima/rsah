@@ -29,7 +29,7 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
     // Calculeaza pozitiile atacate
     for i in 0..8 {
         for j in 0..8 {
-            miscari::set_influenta(&mut tabla, i, j);
+            miscari::set_influenta(&mut tabla, (i, j));
         }
     }
 
@@ -44,7 +44,7 @@ pub(crate) fn tabla_clasica() -> Tabla {
     ])
 }
 
-pub(crate) fn tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
+pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
     let mut tabla = Tabla::default();
     for piesa in piese {
         let i = piesa.chars().nth(0).unwrap() as usize - 'a' as usize;
@@ -71,7 +71,7 @@ pub(crate) fn tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
     // Calculeaza pozitiile atacate
     for i in 0..8 {
         for j in 0..8 {
-            miscari::set_influenta(&mut tabla, i, j);
+            miscari::set_influenta(&mut tabla, (i, j));
         }
     }
 
