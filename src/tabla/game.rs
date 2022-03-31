@@ -49,6 +49,14 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     });
     tabla[src_poz.0][src_poz.1] = Patratel::default();
 
+    // Adauga pozitia precedenta la lista istoricul *piesei*.
+    tabla[dest_poz.0][dest_poz.1]
+        .piesa
+        .as_mut()
+        .unwrap()
+        .pozitii_anterioare
+        .push(src_poz);
+
     // Cauta miscarile disponibile ale piesei proaspat mutate
     miscari::set_influenta(tabla, dest_poz);
     // Actualizeaza miscarile disponibile pentru piesele care trebuie updatate
@@ -80,14 +88,6 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
                     }
                 }
             }
-        }
-    }
-
-    // Daca pionul a fost mutat 2 patratele, seteaza fieldul ampasant
-    if p_old.piesa.unwrap().tip == TipPiesa::Pion {
-        let dist = dest_poz.0 as i32 - src_poz.0 as i32;
-        if dist.abs() == 2 {
-            tabla[dest_poz.0][dest_poz.1].ampasant = true;
         }
     }
 

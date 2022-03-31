@@ -64,15 +64,19 @@ pub(crate) struct Piesa {
     pub(crate) culoare: Culoare,
     /// daca piesa a mai fost mutata
     /// (pt rocada, en passant etc.)
+    /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
     pub(crate) mutat: bool,
+    /// Pozitiile pe care piesa a fost inainte
+    pub(crate) pozitii_anterioare: Vec<PozitieSafe>,
 }
 
 impl Piesa {
     pub(crate) fn new(tip: TipPiesa, culoare: Culoare) -> Piesa {
         Piesa {
-            tip,
-            culoare,
+            pozitii_anterioare: vec![],
             mutat: false,
+            culoare,
+            tip,
         }
     }
 }
@@ -87,23 +91,20 @@ pub(crate) struct Patratel {
     pub(crate) atacat: Vec<PozitieSafe>,
     /// piesele care, prin modificarea acestui patrat, pot fi afectate
     pub(crate) afecteaza: Vec<PozitieSafe>,
-    /// piesa e pion si s-a mutat 2 patratele (mare greseala)
-    ampasant: bool,
 }
-
-/// O **tabla** de sah este o matrice 8x8 de *patratele*.
-pub(crate) type Tabla = [[Patratel; 8]; 8];
 
 impl Default for Patratel {
     fn default() -> Self {
         Patratel {
             afecteaza: vec![],
-            ampasant: false,
             atacat: vec![],
             piesa: None,
         }
     }
 }
 
+/// O **tabla** de sah este o matrice 8x8 de *patratele*.
+pub(crate) type Tabla = [[Patratel; 8]; 8];
+
 /// Coordonatele patratelor care sunt garantate sa existe si sa fie valide.
-pub type PozitieSafe = (usize, usize);
+pub(crate) type PozitieSafe = (usize, usize);
