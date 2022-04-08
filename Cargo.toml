@@ -20,3 +20,4 @@ egui = {version = "^0.16.1", optional = true}
 ggez-egui = {version = "^0.1.7", optional = true}
 lazy_static = "^1.4.0"
 regex = "^1.5.5"
+rand = "^0.3.0"

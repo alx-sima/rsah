@@ -1,4 +1,5 @@
 use super::{miscari, Culoare, Piesa, Tabla, TipPiesa};
+use rand::{self, Rng};
 
 /// Genereaza layoutul tablei de sah dupa template.
 /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
@@ -79,6 +80,39 @@ pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
 }
 
 /// Genereaza o tabla de joc aleatorie
-pub(crate) fn _tabla_random() -> Tabla {
-    todo!()
+pub(crate) fn tabla_random() -> Tabla {
+    let mut tabla = Tabla::default();
+    let mut rng = rand::thread_rng();
+
+    for i in 0..2 {
+        for j in 0..8 {
+            let tip = rng
+                .choose(&[
+                    TipPiesa::Pion,
+                    TipPiesa::Tura,
+                    TipPiesa::Nebun,
+                    TipPiesa::Cal,
+                    TipPiesa::Regina,
+                ])
+                .unwrap();
+
+            tabla[i][j].piesa = Some(Piesa::new(*tip, Culoare::Negru));
+            tabla[7 - i][j].piesa = Some(Piesa::new(*tip, Culoare::Alb));
+        }
+    }
+
+    // Amplaseaza regele la final ca sa existe doar unul
+    let i = rng.gen_range(0, 2);
+    let j = rng.gen_range(0, 8);
+    tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Negru));
+    tabla[7 - i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Alb));
+
+    // Calculeaza pozitiile atacate
+    for i in 0..8 {
+        for j in 0..8 {
+            miscari::set_influenta(&mut tabla, (i, j));
+        }
+    }
+
+    tabla
 }

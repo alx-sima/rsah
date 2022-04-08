@@ -21,47 +21,60 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             ui.set_height(y - 10.0);
 
             ui.vertical_centered_justified(|ui| {
-                if ui.button("Start").clicked() {
-                    game_state.turn = Culoare::Alb;
-                    game_state.game_state = GameState::Game;
-                    game_state.tabla = generare::tabla_clasica();
-                }
+                ui.collapsing("Local", |ui| {
+                    if ui.button("Clasic").clicked() {
+                        game_state.turn = Culoare::Alb;
+                        game_state.game_state = GameState::Game;
+                        game_state.tabla = generare::tabla_clasica();
+                    }
 
-                ui.label("Multiplayer");
+                    // TODO:
+                    if ui.button("Aleator").clicked() {
+                        game_state.turn = Culoare::Alb;
+                        game_state.game_state = GameState::Game;
+                        game_state.tabla = generare::tabla_random();
+                    }
+                });
 
-                ui.add(egui::TextEdit::singleline(&mut game_state.address));
-                if ui.button("Join").clicked() {
-                    match TcpStream::connect(game_state.address.as_str()) {
-                        Ok(s) => {
-                            s.set_nonblocking(true).unwrap();
-                            game_state.guest = true;
-                            game_state.turn = Culoare::Alb;
-                            game_state.tabla = generare::tabla_clasica();
-                            game_state.stream = Some(s);
-                            game_state.game_state = GameState::Multiplayer;
+                // FIXME: centreaza collapsingurile
+                ui.collapsing("Online", |ui| {
+                    if ui.button("Host").clicked() {
+                        let listener = TcpListener::bind(game_state.address.as_str()).unwrap();
+                        match listener.accept() {
+                            Ok((s, _addr)) => {
+                                s.set_nonblocking(true).unwrap();
+                                game_state.turn = Culoare::Alb;
+                                game_state.tabla = generare::tabla_clasica();
+                                game_state.stream = Some(s);
+                                game_state.game_state = GameState::Multiplayer;
+                            }
+                            Err(e) => {
+                                println!("couldn't get client: {}", e);
+                                return;
+                            }
+                        };
+                    }
+
+                    ui.horizontal(|ui| {
+                        ui.add(egui::TextEdit::singleline(&mut game_state.address));
+                        if ui.button("Join").clicked() {
+                            match TcpStream::connect(game_state.address.as_str()) {
+                                Ok(s) => {
+                                    s.set_nonblocking(true).unwrap();
+                                    game_state.guest = true;
+                                    game_state.turn = Culoare::Alb;
+                                    game_state.tabla = generare::tabla_clasica();
+                                    game_state.stream = Some(s);
+                                    game_state.game_state = GameState::Multiplayer;
+                                }
+                                Err(e) => {
+                                    println!("{}", e);
+                                    return;
+                                }
+                            };
                         }
-                        Err(e) => {
-                            println!("{}", e);
-                            return;
-                        }
-                    };
-                }
-                if ui.button("Host").clicked() {
-                    let listener = TcpListener::bind(game_state.address.as_str()).unwrap();
-                    match listener.accept() {
-                        Ok((s, _addr)) => {
-                            s.set_nonblocking(true).unwrap();
-                            game_state.turn = Culoare::Alb;
-                            game_state.tabla = generare::tabla_clasica();
-                            game_state.stream = Some(s);
-                            game_state.game_state = GameState::Multiplayer;
-                        }
-                        Err(e) => {
-                            println!("couldn't get client: {}", e);
-                            return;
-                        }
-                    };
-                }
+                    });
+                });
 
                 if ui.button("Editor").clicked() {
                     game_state.piesa_selectata_editor = TipPiesa::Pion;
@@ -70,6 +83,7 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
                     game_state.tabla = Default::default();
                     game_state.game_state = GameState::Editor;
                 }
+
                 if ui.button("Quit").clicked() {
                     ggez::event::quit(ctx);
                 }
