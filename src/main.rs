@@ -39,8 +39,8 @@ struct State {
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
     piesa_sel: Option<(usize, usize)>,
+    /// Ultima mutare (pt en passant si TODO: sa se arate pe tabla)
     piesa_selectata_editor: TipPiesa,
-    egui_backend: EguiBackend,
     /// Conexiunea la celalalt jucator (pt multiplayer)
     stream: Option<TcpStream>,
     /// Adresa IP a jocului hostat
@@ -48,6 +48,7 @@ struct State {
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
+    egui_backend: EguiBackend,
 }
 
 impl Default for State {
@@ -84,26 +85,23 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             GameState::Multiplayer => {
                 if (self.turn == Culoare::Negru) != self.guest {
                     let mut buf = [0; 16];
-                    match self.stream.as_mut().unwrap().read(&mut buf) {
-                        Ok(len) => {
-                            let msg = std::str::from_utf8(&buf[..len]).unwrap();
-                            if let Some((src_poz, dest_poz)) =
-                                tabla::notatie::decode_move(&self.tabla, msg, self.turn)
-                            {
-                                // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                                tabla::game::muta(&mut self.tabla, src_poz, dest_poz);
+                    if let Ok(len) = self.stream.as_mut().unwrap().read(&mut buf) {
+                        let msg = std::str::from_utf8(&buf[..len]).unwrap();
+                        if let Some((src_poz, dest_poz)) =
+                            tabla::notatie::decode_move(&self.tabla.mat, msg, self.turn)
+                        {
+                            // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
+                            tabla::game::muta(&mut self.tabla.mat, src_poz, dest_poz);
 
-                                // Randul urmatorului jucator
-                                // Schimba turn din alb in negru si din negru in alb
-                                self.turn = match self.turn {
-                                    Culoare::Alb => Culoare::Negru,
-                                    Culoare::Negru => Culoare::Alb,
-                                };
+                            // Randul urmatorului jucator
+                            // Schimba turn din alb in negru si din negru in alb
+                            self.turn = match self.turn {
+                                Culoare::Alb => Culoare::Negru,
+                                Culoare::Negru => Culoare::Alb,
+                            };
 
-                                miscari::verif_sah(&self.tabla, self.turn);
-                            }
+                            miscari::verif_sah(&self.tabla.mat, self.turn);
                         }
-                        _ => {}
                     }
                 }
             }
@@ -134,7 +132,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                     );
                 }
             } else if self.game_state == GameState::Editor {
-                tabla::editor::player_turn(ctx, &mut self.tabla, self.piesa_selectata_editor);
+                tabla::editor::player_turn(ctx, &mut self.tabla.mat, self.piesa_selectata_editor);
             }
             draw::pieces(self, ctx)?;
         }

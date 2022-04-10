@@ -1,8 +1,8 @@
-use crate::tabla::{input::in_board, Culoare, PozitieSafe, Tabla, TipPiesa};
+use crate::tabla::{input::in_board, Culoare, MatTabla, PozitieSafe, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 /// TODO: repara mismatch isize-usize pt readability
-pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
+pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
     let mut rez = Vec::new();
     let i = i as usize;
     let j = j as usize;
@@ -24,12 +24,11 @@ pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<
         // Daca urmatoarele 2 patrate din fata pionului sunt libere,
         // iar pionul nu a fost deja mutat, acesta poate avansa 2 patrate.
         let i2 = (i1 as i32 + dir) as usize;
-        if in_board(i2 as i32, j as i32) {
-            if !tabla[i][j].piesa.clone().unwrap().mutat
-                && (tabla[i2 as usize][j].piesa.is_none() || tot_ce_afecteaza)
-            {
-                rez.push((i2, j));
-            }
+        if in_board(i2 as i32, j as i32)
+            && !tabla[i][j].piesa.clone().unwrap().mutat
+            && (tabla[i2 as usize][j].piesa.is_none() || tot_ce_afecteaza)
+        {
+            rez.push((i2, j));
         }
     }
 
@@ -39,7 +38,7 @@ pub(super) fn get(tabla: &Tabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<
 /// Returneaza pozitiile pe care le poate ataca pionul.
 /// *pe_bune* inseamna ca trebuie sa existe o piesa atacata.
 /// TODO: nume mai sugestiv
-pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
+pub(super) fn ataca(tabla: &MatTabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
     let mut rez = vec![];
 
     let culoare = tabla[poz.0][poz.1].piesa.clone().unwrap().culoare;
@@ -66,10 +65,8 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Pozit
                 }
             // TODO: ceva e imbarligat pe aici
             } else if let Some(victima) = &tabla[poz.0][j].piesa {
-                if victima.culoare != culoare {
-                    if verif_en_passant(tabla, poz.0, j) {
-                        rez.push((i, j));
-                    }
+                if victima.culoare != culoare && verif_en_passant(tabla, poz.0, j) {
+                    rez.push((i, j));
                 }
             }
         }
@@ -82,14 +79,12 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Pozit
 /// **tocmai** a fost mutat 2 patratele.
 /// TODO: trebuie sa fie ultima-ultima miscare i guess, deci
 /// merge si o cautare in istoric sau macar ultima mutare.
-fn verif_en_passant(tabla: &Tabla, i: usize, j: usize) -> bool {
+fn verif_en_passant(tabla: &MatTabla, i: usize, j: usize) -> bool {
     if let Some(piesa) = &tabla[i][j].piesa {
-        if piesa.tip == TipPiesa::Pion {
-            if piesa.pozitii_anterioare.len() == 1 {
-                let poz = piesa.pozitii_anterioare[0];
-                if (poz.0 as i32 - i as i32).abs() == 2 {
-                    return true;
-                }
+        if piesa.tip == TipPiesa::Pion && piesa.pozitii_anterioare.len() == 1 {
+            let poz = piesa.pozitii_anterioare[0];
+            if (poz.0 as i32 - i as i32).abs() == 2 {
+                return true;
             }
         }
     }

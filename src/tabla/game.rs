@@ -1,12 +1,18 @@
 use std::{io::Write, net::TcpStream};
 
-use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
+use crate::tabla::MatchState;
+
+use super::{input, miscari, notatie, Culoare, MatTabla, Patratel, Piesa, Tabla, TipPiesa};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
-pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize, usize)) -> String {
+pub(crate) fn muta(
+    tabla: &mut MatTabla,
+    src_poz: (usize, usize),
+    dest_poz: (usize, usize),
+) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla[src_poz.0][src_poz.1].clone();
     // Viitoarea pozitie a piesei
@@ -65,7 +71,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     }
 
     // Verificare pentru rocada
-    if p_old.piesa.clone().unwrap().tip == TipPiesa::Rege {
+    if p_old.piesa.unwrap().tip == TipPiesa::Rege {
         let dist = dest_poz.1 as i32 - src_poz.1 as i32;
         if dist.abs() == 2 {
             // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada
@@ -110,7 +116,8 @@ pub(crate) fn player_turn(
         if let Some(src_poz) = *piesa_sel {
             // Daca miscarea este valida, efectueaza mutarea
             if miscari_disponibile.contains(&(dest_i, dest_j)) {
-                let mut mov = muta(tabla, src_poz, (dest_i, dest_j));
+                let mut mov = muta(&mut tabla.mat, src_poz, (dest_i, dest_j));
+                tabla.ultima_miscare = Some((src_poz, (dest_i, dest_j)));
 
                 // Randul urmatorului jucator
                 // Schimba turn din alb in negru si din negru in alb
@@ -119,26 +126,33 @@ pub(crate) fn player_turn(
                     Culoare::Negru => Culoare::Alb,
                 };
 
-                if miscari::verif_sah(tabla, *turn) {
+                if miscari::verif_sah(&tabla.mat, *turn) {
                     // Daca e sah si nu exista miscari, e mat
-                    if !miscari::exista_miscari(tabla, *turn) {
+                    if !miscari::exista_miscari(&tabla.mat, *turn) {
+                        if *turn == Culoare::Alb {
+                            tabla.match_state = MatchState::AlbEMat;
+                        } else {
+                            tabla.match_state = MatchState::NegruEMat;
+                        }
                         println!("{:?} e in mat", *turn);
                         mov += "#";
+
                     // altfel, e sah normal
                     } else {
                         println!("{:?} e in sah", *turn);
                         mov += "+";
                     }
                 // Daca nu e sah si nu exista miscari, e pat
-                } else if !miscari::exista_miscari(tabla, *turn) {
+                } else if !miscari::exista_miscari(&tabla.mat, *turn) {
                     // TODO
+                    tabla.match_state = MatchState::Pat;
                     println!("{:?} e in pat", *turn);
                 }
 
                 istoric.push(mov.clone());
 
                 if let Some(stream) = stream {
-                    stream.write(mov.as_bytes()).unwrap();
+                    stream.write_all(mov.as_bytes()).unwrap();
                 }
             }
             // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
@@ -146,15 +160,13 @@ pub(crate) fn player_turn(
             *miscari_disponibile = vec![];
 
         // ...daca nu, o selecteaza (daca e de aceeasi culoare)
-        } else {
-            if let Some(piesa) = &tabla[dest_i][dest_j].piesa {
-                if *turn == piesa.culoare {
-                    *piesa_sel = Some((dest_i, dest_j));
-                    let miscari = miscari::get_miscari(tabla, (dest_i, dest_j), false);
+        } else if let Some(piesa) = &tabla.mat[dest_i][dest_j].piesa {
+            if *turn == piesa.culoare {
+                *piesa_sel = Some((dest_i, dest_j));
+                let miscari = miscari::get_miscari(&tabla.mat, (dest_i, dest_j), false);
 
-                    *miscari_disponibile =
-                        miscari::nu_provoaca_sah(tabla, miscari, (dest_i, dest_j), *turn);
-                }
+                *miscari_disponibile =
+                    miscari::nu_provoaca_sah(&tabla.mat, miscari, (dest_i, dest_j), *turn);
             }
         }
     }

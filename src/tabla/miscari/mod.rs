@@ -1,4 +1,4 @@
-use super::{game::muta, input::in_board, Culoare, PozitieSafe, Tabla, TipPiesa};
+use super::{game::muta, input::in_board, Culoare, MatTabla, PozitieSafe, TipPiesa};
 
 mod cal;
 mod nebun;
@@ -11,7 +11,7 @@ mod tura;
 /// deplasat liniar, in functie de versori
 // FIXME: nume mai bune pt parametru?
 fn cautare_in_linie(
-    tabla: &Tabla,
+    tabla: &MatTabla,
     poz: PozitieSafe,
     versori: &[(i32, i32)],
     tot_ce_afecteaza: bool,
@@ -49,7 +49,7 @@ fn cautare_in_linie(
 /// (**include piesele pe care le ataca**).
 /// Daca *tot_ce_afecteaza* e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
 pub(crate) fn get_miscari(
-    tabla: &Tabla,
+    tabla: &MatTabla,
     poz: PozitieSafe,
     tot_ce_afecteaza: bool,
 ) -> Vec<PozitieSafe> {
@@ -81,7 +81,7 @@ pub(crate) fn get_miscari(
 
 /// Pentru piesa de la (i, j) returneaza o lista cu toate pozitiile pe care le ataca.
 /// Daca piesa nu exista, se returneaza un vector gol.
-pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieSafe> {
+pub(crate) fn get_atacat(tabla: &MatTabla, i: i32, j: i32) -> Vec<PozitieSafe> {
     if !in_board(i, j) {
         return vec![];
     }
@@ -105,13 +105,13 @@ pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<PozitieSafe> {
 }
 
 /// Verifica daca regele jucatorului *culoare* se afla in sah
-pub(crate) fn verif_sah(tabla: &Tabla, culoare: Culoare) -> bool {
+pub(crate) fn verif_sah(tabla: &MatTabla, culoare: Culoare) -> bool {
     let (i_rege, j_rege) = get_poz_rege(tabla, culoare);
     !regele_nu_e_in_sah(tabla, (i_rege, j_rege))
 }
 
 // FIXME: fff urat
-fn regele_nu_e_in_sah(tabla: &Tabla, poz: PozitieSafe) -> bool {
+fn regele_nu_e_in_sah(tabla: &MatTabla, poz: PozitieSafe) -> bool {
     let culoare = tabla[poz.0][poz.1].piesa.clone().unwrap().culoare;
     !tabla[poz.0][poz.1]
         .atacat
@@ -122,27 +122,28 @@ fn regele_nu_e_in_sah(tabla: &Tabla, poz: PozitieSafe) -> bool {
 
 /// Verifica daca jucatorul *culoare* mai are miscari disponibile.
 /// IMPORTANT: functia **nu** verifica daca jucatorul este in sah.
-pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
+pub(crate) fn exista_miscari(tabla: &MatTabla, culoare: Culoare) -> bool {
     for i in 0..8 {
         for j in 0..8 {
             if let Some(piesa) = &tabla[i][j].piesa {
                 if piesa.culoare == culoare {
                     let miscari = get_miscari(tabla, (i, j), false);
                     let miscari = nu_provoaca_sah(tabla, miscari, (i, j), culoare);
-                    if miscari.len() > 0 {
+                    if !miscari.is_empty() {
                         return true;
                     }
                 }
             }
         }
     }
-    return false;
+
+    false
 }
 
 /// Filtreaza vectorul miscari, ramanand doar cele care nu provoaca sah pentru regele propriu,
 /// sau, daca acesta e deja in sah, doar cele care il scot.
 pub(crate) fn nu_provoaca_sah(
-    tabla: &Tabla,
+    tabla: &MatTabla,
     miscari: Vec<PozitieSafe>,
     piesa: PozitieSafe,
     culoare: Culoare,
@@ -162,7 +163,7 @@ pub(crate) fn nu_provoaca_sah(
 }
 
 /// Marcheaza celulele atacate de (i, j) si care afecteaza piesa.
-pub(crate) fn set_influenta(tabla: &mut Tabla, poz: PozitieSafe) {
+pub(crate) fn set_influenta(tabla: &mut MatTabla, poz: PozitieSafe) {
     // Seteaza patratele care pot fi afectate de mutarea piesei.
     for (x, y) in get_miscari(tabla, poz, true) {
         tabla[x][y].afecteaza.push(poz);
@@ -175,21 +176,21 @@ pub(crate) fn set_influenta(tabla: &mut Tabla, poz: PozitieSafe) {
 }
 
 /// Inversul la `set_influenta`.
-pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: PozitieSafe) {
+pub(crate) fn clear_influenta(tabla: &mut MatTabla, poz: PozitieSafe) {
     // Sterge din lista de piese afectate a celulei (x, y) piesa.
-    for (x, y) in get_miscari(&tabla, poz, true) {
+    for (x, y) in get_miscari(tabla, poz, true) {
         tabla[x][y].afecteaza.retain(|k| *k != poz);
     }
 
     // Analog din lista de piese atacate.
-    for (x, y) in get_atacat(&tabla, poz.0 as i32, poz.1 as i32) {
+    for (x, y) in get_atacat(tabla, poz.0 as i32, poz.1 as i32) {
         tabla[x][y].atacat.retain(|k| *k != poz);
     }
 }
 
 /// Returneaza pozitia regelui de culoare *culoare*.
 /// DEPRECATED: e doar pt ca a fost mai usor decat sa retinem pozitia regelui intr-un alt field.
-pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> PozitieSafe {
+pub(crate) fn get_poz_rege(tabla: &MatTabla, culoare: Culoare) -> PozitieSafe {
     // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
     // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
     for i in 0..8 {

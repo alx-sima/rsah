@@ -83,7 +83,7 @@ impl Piesa {
 
 /// Un patrat de pe tabla, care poate avea o **piesa**;
 /// retine si pozitiile *(i, j)* pieselor care il ataca.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Patratel {
     /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
@@ -93,18 +93,30 @@ pub(crate) struct Patratel {
     pub(crate) afecteaza: Vec<PozitieSafe>,
 }
 
-impl Default for Patratel {
+#[derive(Default)]
+pub(crate) struct Tabla {
+    pub(crate) mat: MatTabla,
+    pub(crate) match_state: MatchState,
+    pub(crate) ultima_miscare: Option<(PozitieSafe, PozitieSafe)>,
+}
+
+#[derive(PartialEq)]
+pub(crate) enum MatchState {
+    Playing,
+    AlbEMat,
+    NegruEMat,
+    Pat,
+}
+
+// FIXME:
+impl Default for MatchState {
     fn default() -> Self {
-        Patratel {
-            afecteaza: vec![],
-            atacat: vec![],
-            piesa: None,
-        }
+        MatchState::Playing
     }
 }
 
 /// O **tabla** de sah este o matrice 8x8 de *patratele*.
-pub(crate) type Tabla = [[Patratel; 8]; 8];
+pub(crate) type MatTabla = [[Patratel; 8]; 8];
 
 /// Coordonatele patratelor care sunt garantate sa existe si sa fie valide.
 pub(crate) type PozitieSafe = (usize, usize);

@@ -2,7 +2,7 @@ use ggez::graphics;
 
 /// Verifica daca celula (i, j) intra in tabla de joc
 pub(crate) fn in_board(i: i32, j: i32) -> bool {
-    i >= 0 && i < 8 && j >= 0 && j < 8
+    (0..8).contains(&i) && (0..8).contains(&j)
 }
 
 /// Calculeaza latura unui patratel de pe tabla de sah si paddingul la stanga/sus,

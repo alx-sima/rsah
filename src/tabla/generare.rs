@@ -1,12 +1,12 @@
-use super::{miscari, Culoare, Piesa, Tabla, TipPiesa};
+use super::{miscari, Culoare, MatTabla, Piesa, TipPiesa};
 use rand::{self, Rng};
 
 /// Genereaza layoutul tablei de sah dupa template.
 /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
 /// 'template' este un vector de stringuri, fiecare string
 /// marcand o linie, in loc sa fie un singur string separat de '\n')
-pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
-    let mut tabla: Tabla = Default::default();
+pub(crate) fn tabla_from(template: [&str; 8]) -> MatTabla {
+    let mut tabla: MatTabla = Default::default();
     for (i, line) in template.iter().enumerate() {
         for (j, c) in line.chars().enumerate() {
             let culoare = if c.is_lowercase() {
@@ -38,17 +38,17 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
 }
 
 /// Genereaza o tabla de sah clasica
-pub(crate) fn tabla_clasica() -> Tabla {
+pub(crate) fn tabla_clasica() -> MatTabla {
     tabla_from([
         "rnbqkbnr", "pppppppp", "........", "........", "........", "........", "PPPPPPPP",
         "RNBQKBNR",
     ])
 }
 
-pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
-    let mut tabla = Tabla::default();
+pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> MatTabla {
+    let mut tabla = MatTabla::default();
     for piesa in piese {
-        let i = piesa.chars().nth(0).unwrap() as usize - 'a' as usize;
+        let i = piesa.chars().next().unwrap() as usize - 'a' as usize;
         let j = piesa.chars().nth(1).unwrap() as usize - '1' as usize;
         let tip = piesa.chars().nth(2).unwrap();
         let culoare = if tip.is_uppercase() {
@@ -80,8 +80,8 @@ pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> Tabla {
 }
 
 /// Genereaza o tabla de joc aleatorie
-pub(crate) fn tabla_random() -> Tabla {
-    let mut tabla = Tabla::default();
+pub(crate) fn tabla_random() -> MatTabla {
+    let mut tabla = MatTabla::default();
     let mut rng = rand::thread_rng();
 
     for i in 0..2 {

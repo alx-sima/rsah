@@ -1,6 +1,6 @@
 use crate::tabla::TipPiesa;
 
-use super::{Culoare, Patratel, Tabla};
+use super::{Culoare, MatTabla, Patratel};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -63,7 +63,7 @@ pub(crate) fn encode_move(
 /// Rezultatul va fi *Some((src_i, src_j), (dest_i, dest_j))*
 /// sau *None* (stringul nu este valid).
 pub(crate) fn decode_move(
-    tabla: &Tabla,
+    tabla: &MatTabla,
     mov: &str,
     turn: Culoare,
 ) -> Option<((usize, usize), (usize, usize))> {
@@ -73,7 +73,7 @@ pub(crate) fn decode_move(
     }
     // Nu trebuie parcurse capturile, pt ca regexul sigur
     // nu va returna mai multe (e intre /^/ si /$/)
-    let capture = REGX.captures_iter(mov).nth(0).unwrap();
+    let capture = REGX.captures_iter(mov).next().unwrap();
     if let (Some(j), Some(i)) = (capture.get(4), capture.get(5)) {
         // FIXME: jegos
         let pozi = 8 - str::parse::<usize>(i.as_str()).unwrap();
@@ -93,7 +93,7 @@ pub(crate) fn decode_move(
 
         let (dif_i, dif_j) = if let Some(discriminant) = capture.get(2) {
             let d_str = discriminant.as_str();
-            if let Some(lin) = str::parse::<usize>(d_str).ok() {
+            if let Ok(lin) = str::parse::<usize>(d_str) {
                 (Some(8 - lin), None)
             } else {
                 let col =
@@ -113,19 +113,17 @@ pub(crate) fn decode_move(
             println!("{} {}", i, j);
             if let Some(piesa) = &tabla[*i][*j].piesa {
                 println!("({},{}):{:?}", i, j, piesa);
-                if piesa.culoare == turn {
-                    if piesa.tip == tip_piesa {
-                        if let Some(dif_i) = dif_i {
-                            if *i == dif_i {
-                                return Some(((*i, *j), (pozi, pozj)));
-                            }
-                        } else if let Some(dif_j) = dif_j {
-                            if *j == dif_j {
-                                return Some(((*i, *j), (pozi, pozj)));
-                            }
-                        } else {
+                if piesa.culoare == turn && piesa.tip == tip_piesa {
+                    if let Some(dif_i) = dif_i {
+                        if *i == dif_i {
                             return Some(((*i, *j), (pozi, pozj)));
                         }
+                    } else if let Some(dif_j) = dif_j {
+                        if *j == dif_j {
+                            return Some(((*i, *j), (pozi, pozj)));
+                        }
+                    } else {
+                        return Some(((*i, *j), (pozi, pozj)));
                     }
                 }
             }

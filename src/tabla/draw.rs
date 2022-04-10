@@ -51,11 +51,11 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
 /// Deseneaza piesele
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
-    
+
     for i in 0..8 {
         for j in 0..8 {
             let (i_pies, j_pies) = if state.guest { (7 - i, 7 - j) } else { (i, j) };
-            if let Some(patratel) = &state.tabla[i_pies][j_pies].piesa {
+            if let Some(patratel) = &state.tabla.mat[i_pies][j_pies].piesa {
                 let img = graphics::Image::new(
                     ctx,
                     &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.tip),
@@ -76,8 +76,29 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
 pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
+    let guest = game_state.guest;
+
+    // Se coloreaza cu albastru ultima miscare
+    if let Some((src, dest)) = game_state.tabla.ultima_miscare {
+        let patrat_albastru = MeshBuilder::new()
+            .rectangle(
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(0.0, 0.0, l, l),
+                // FIXME: o culoare mai frumoasa
+                graphics::Color::BLUE,
+            )?
+            .build(ctx)?;
+
+        let (x_src, y_src) = draw_pos_multiplayer(src.1 as f32, src.0 as f32, l, guest);
+        let (x_dest, y_dest) = draw_pos_multiplayer(dest.1 as f32, dest.0 as f32, l, guest);
+        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_src, y_ofs + y_src],))?;
+        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_dest, y_ofs + y_dest],))?;
+    }
+
+    // Se coloreaza cu verde piesa selectata si
+    // cu galben mutarile posibile ale acesteia.
     if let Some((x, y)) = game_state.piesa_sel {
-        // TODO: CURSED??? sigur se pot face mai usor patrate
+        // FIXME: CURSED??? sigur se pot face mai usor patrate
         let patrat_galben = MeshBuilder::new()
             .rectangle(
                 graphics::DrawMode::fill(),
@@ -85,6 +106,7 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
                 graphics::Color::YELLOW,
             )?
             .build(ctx)?;
+
         let patrat_verde = MeshBuilder::new()
             .rectangle(
                 graphics::DrawMode::fill(),
@@ -92,27 +114,23 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
                 graphics::Color::GREEN,
             )?
             .build(ctx)?;
+
         for (i, j) in &game_state.miscari_disponibile {
-            let (x, y) = if game_state.guest {
-                ((7 - *j) as f32 * l, (7 - *i) as f32 * l)
-            } else {
-                (*j as f32 * l, *i as f32 * l)
-            };
+            let (x, y) = draw_pos_multiplayer(*j as f32, *i as f32, l, guest);
             graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
         }
-        if game_state.guest {
-            graphics::draw(
-                ctx,
-                &patrat_verde,
-                ([x_ofs + (7 - y) as f32 * l, y_ofs + (7 - x) as f32 * l],),
-            )?;
-        } else {
-            graphics::draw(
-                ctx,
-                &patrat_verde,
-                ([x_ofs + y as f32 * l, y_ofs + x as f32 * l],),
-            )?;
-        }
+
+        let (x, y) = draw_pos_multiplayer(y as f32, x as f32, l, guest);
+        graphics::draw(ctx, &patrat_verde, ([x_ofs + x, y_ofs + y],))?;
     }
     Ok(())
+}
+
+/// Ajusteaza coordonatele pt multiplayer (cand tabla este invers).
+fn draw_pos_multiplayer(x: f32, y: f32, l: f32, guest: bool) -> (f32, f32) {
+    if guest {
+        ((7.0 - x) * l, (7.0 - y) * l)
+    } else {
+        (x * l, y * l)
+    }
 }
