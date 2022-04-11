@@ -176,7 +176,7 @@ mod test {
 
         for (str, template) in input {
             let tabla = generare::tabla_from(template);
-            println!("{:?}", super::decode_move(&tabla, str, Culoare::Alb));
+            println!("{:?}", super::decode_move(&tabla.mat, str, Culoare::Alb));
         }
     }
 }

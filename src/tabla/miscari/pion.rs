@@ -1,4 +1,4 @@
-use crate::tabla::{input::in_board, Culoare, MatTabla, PozitieSafe, TipPiesa};
+use crate::tabla::{input::in_board, Culoare, MatTabla, PozitieSafe, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 /// TODO: repara mismatch isize-usize pt readability
@@ -38,10 +38,10 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 /// Returneaza pozitiile pe care le poate ataca pionul.
 /// *pe_bune* inseamna ca trebuie sa existe o piesa atacata.
 /// TODO: nume mai sugestiv
-pub(super) fn ataca(tabla: &MatTabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
+pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
     let mut rez = vec![];
 
-    let culoare = tabla[poz.0][poz.1].piesa.clone().unwrap().culoare;
+    let culoare = tabla.mat[poz.0][poz.1].piesa.clone().unwrap().culoare;
     let i = if culoare == Culoare::Alb {
         poz.0 - 1
     } else {
@@ -59,12 +59,12 @@ pub(super) fn ataca(tabla: &MatTabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Po
                 continue;
             }
 
-            if let Some(victima) = &tabla[i][j].piesa {
+            if let Some(victima) = &tabla.mat[i][j].piesa {
                 if victima.culoare != culoare {
                     rez.push((i, j));
                 }
             // TODO: ceva e imbarligat pe aici
-            } else if let Some(victima) = &tabla[poz.0][j].piesa {
+            } else if let Some(victima) = &tabla.mat[poz.0][j].piesa {
                 if victima.culoare != culoare && verif_en_passant(tabla, poz.0, j) {
                     rez.push((i, j));
                 }
@@ -79,12 +79,15 @@ pub(super) fn ataca(tabla: &MatTabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Po
 /// **tocmai** a fost mutat 2 patratele.
 /// TODO: trebuie sa fie ultima-ultima miscare i guess, deci
 /// merge si o cautare in istoric sau macar ultima mutare.
-fn verif_en_passant(tabla: &MatTabla, i: usize, j: usize) -> bool {
-    if let Some(piesa) = &tabla[i][j].piesa {
-        if piesa.tip == TipPiesa::Pion && piesa.pozitii_anterioare.len() == 1 {
-            let poz = piesa.pozitii_anterioare[0];
-            if (poz.0 as i32 - i as i32).abs() == 2 {
-                return true;
+fn verif_en_passant(tabla: &Tabla, i: usize, j: usize) -> bool {
+    if let Some((src, dest)) = &tabla.ultima_miscare {
+        if i == dest.0 && j == dest.1 {
+            if let Some(piesa) = &tabla.mat[i][j].piesa {
+                if piesa.tip == TipPiesa::Pion {
+                    if (dest.0 as isize - src.0 as isize).abs() == 2 {
+                        return true;
+                    }
+                }
             }
         }
     }

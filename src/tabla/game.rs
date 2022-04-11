@@ -7,7 +7,7 @@ use ggez::event::MouseButton;
 
 use crate::{tabla::MatchState, GameState, State};
 
-use super::{input, miscari, notatie, Culoare, MatTabla, Patratel, Piesa, Tabla, TipPiesa};
+use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
@@ -15,14 +15,14 @@ use super::{input, miscari, notatie, Culoare, MatTabla, Patratel, Piesa, Tabla, 
 /// returneaza notatia algebrica a miscarii
 // FIXME: face prea multe lucruri
 pub(crate) fn muta(
-    tabla: &mut MatTabla,
+    tabla: &mut Tabla,
     src_poz: (usize, usize),
     dest_poz: (usize, usize),
 ) -> String {
     // Vechea pozitie a piesei
-    let p_old = tabla[src_poz.0][src_poz.1].clone();
+    let p_old = tabla.mat[src_poz.0][src_poz.1].clone();
     // Viitoarea pozitie a piesei
-    let p_new = tabla[dest_poz.0][dest_poz.1].clone();
+    let p_new = tabla.mat[dest_poz.0][dest_poz.1].clone();
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
@@ -34,17 +34,18 @@ pub(crate) fn muta(
             // Pionul se muta doar pe o singura linie (cand nu ataca).
             if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
                 let pion_luat = (src_poz.0, dest_poz.1);
-                tabla[dest_poz.0][dest_poz.1].piesa = tabla[pion_luat.0][pion_luat.1].piesa.clone();
+                tabla.mat[dest_poz.0][dest_poz.1].piesa = tabla.mat[pion_luat.0][pion_luat.1].piesa.clone();
 
-                pcs_to_reset.append(&mut tabla[pion_luat.0][pion_luat.1].afecteaza);
-                pcs_to_reset.append(&mut tabla[pion_luat.0][pion_luat.1].atacat);
+                pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].afecteaza);
+                pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].atacat);
 
-                tabla[pion_luat.0][pion_luat.1].piesa = None;
+                tabla.mat[pion_luat.0][pion_luat.1].piesa = None;
             }
         }
     }
 
-    let mutare = notatie::encode_move(tabla, src_poz, dest_poz);
+    // FIXME: dc trebuie mutable?
+    let mutare = notatie::encode_move(&mut tabla.mat, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
     miscari::clear_influenta(tabla, src_poz);
@@ -55,14 +56,14 @@ pub(crate) fn muta(
     }
 
     // Muta piesa
-    tabla[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
+    tabla.mat[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
         mutat: true,
         ..p_old.clone().piesa.unwrap()
     });
-    tabla[src_poz.0][src_poz.1] = Patratel::default();
+    tabla.mat[src_poz.0][src_poz.1] = Patratel::default();
 
     // Adauga pozitia precedenta la lista istoricul *piesei*.
-    tabla[dest_poz.0][dest_poz.1]
+    tabla.mat[dest_poz.0][dest_poz.1]
         .piesa
         .as_mut()
         .unwrap()
@@ -88,7 +89,7 @@ pub(crate) fn muta(
             for i in [1, 2] {
                 let poz_tura = dest_poz.1 as i32 + i * dir;
                 if input::in_board(dest_poz.0 as i32, poz_tura) {
-                    if let Some(tura) = tabla[dest_poz.0][poz_tura as usize].piesa.clone() {
+                    if let Some(tura) = tabla.mat[dest_poz.0][poz_tura as usize].piesa.clone() {
                         if tura.tip == TipPiesa::Tura {
                             println!("{} {}", dest_poz.0, poz_tura);
                             muta(
@@ -134,7 +135,7 @@ fn await_move(state: &mut State) {
         let msg = std::str::from_utf8(&tcp_buffer[..len]).unwrap();
         if let Some((src_poz, dest_poz)) = notatie::decode_move(&state.tabla.mat, msg, state.turn) {
             // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-            muta(&mut state.tabla.mat, src_poz, dest_poz);
+            muta(&mut state.tabla, src_poz, dest_poz);
             state.tabla.ultima_miscare = Some((src_poz, dest_poz));
 
             // Randul urmatorului jucator
@@ -163,7 +164,7 @@ fn player_turn(
     if let Some(src) = *piesa_sel {
         // Daca miscarea este valida, efectueaza mutarea
         if miscari_disponibile.contains(&dest) {
-            let mut mov = muta(&mut tabla.mat, src, dest);
+            let mut mov = muta(tabla, src, dest);
             tabla.ultima_miscare = Some((src, dest));
 
             // Randul urmatorului jucator
@@ -196,9 +197,9 @@ fn player_turn(
     } else if let Some(piesa) = &tabla.mat[dest.0][dest.1].piesa {
         if *turn == piesa.culoare {
             *piesa_sel = Some(dest);
-            let miscari = miscari::get_miscari(&tabla.mat, dest, false);
+            let miscari = miscari::get_miscari(&tabla, dest, false);
 
-            *miscari_disponibile = miscari::nu_provoaca_sah(&tabla.mat, miscari, dest, *turn);
+            *miscari_disponibile = miscari::nu_provoaca_sah(&tabla, miscari, dest, *turn);
         }
     }
 }
@@ -212,7 +213,7 @@ fn player_turn(
 fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
     if miscari::verif_sah(&tabla.mat, *turn) {
         // Daca e sah si nu exista miscari, e mat.
-        if !miscari::exista_miscari(&tabla.mat, *turn) {
+        if !miscari::exista_miscari(&tabla, *turn) {
             if *turn == Culoare::Alb {
                 tabla.match_state = MatchState::AlbEMat;
             } else {
@@ -224,7 +225,7 @@ fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
             //mov += "+";
         }
     // Daca nu e sah si nu exista miscari, e pat.
-    } else if !miscari::exista_miscari(&tabla.mat, *turn) {
+    } else if !miscari::exista_miscari(&tabla, *turn) {
         // TODO:
         tabla.match_state = MatchState::Pat;
     }

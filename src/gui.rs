@@ -28,13 +28,13 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                     if ui.button("Clasic").clicked() {
                         state.turn = Culoare::Alb;
                         state.game_state = GameState::Game;
-                        state.tabla.mat = generare::tabla_clasica();
+                        state.tabla = generare::tabla_clasica();
                     }
 
                     // TODO:
                     if ui.button("Aleator").clicked() {
                         state.game_state = GameState::Game;
-                        state.tabla.mat = generare::tabla_random();
+                        state.tabla = generare::tabla_random();
                     }
                 });
 
@@ -50,7 +50,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                                 // Nu mai asteapta alte conexiuni.
                                 state.tcp_host = None;
                                 state.game_state = GameState::Multiplayer;
-                                state.tabla.mat = generare::tabla_clasica();
+                                state.tabla = generare::tabla_clasica();
                                 init_game(state);
                                 return;
                             }
@@ -77,7 +77,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                             match TcpStream::connect(state.address.clone().as_str()) {
                                 Ok(s) => {
                                     s.set_nonblocking(true).unwrap();
-                                    state.tabla.mat = generare::tabla_clasica();
+                                    state.tabla = generare::tabla_clasica();
                                     state.game_state = GameState::Multiplayer;
                                     state.stream = Some(s);
                                     state.guest = true;
@@ -228,6 +228,5 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
 
 fn init_game(game_state: &mut State) {
     game_state.miscari_disponibile = vec![];
-    game_state.tabla.ultima_miscare = None;
     game_state.turn = Culoare::Alb;
 }

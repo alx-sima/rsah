@@ -93,14 +93,14 @@ pub(crate) struct Patratel {
     pub(crate) afecteaza: Vec<PozitieSafe>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Tabla {
     pub(crate) mat: MatTabla,
     pub(crate) match_state: MatchState,
     pub(crate) ultima_miscare: Option<(PozitieSafe, PozitieSafe)>,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) enum MatchState {
     Playing,
     AlbEMat,
