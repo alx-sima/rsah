@@ -2,7 +2,10 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::State;
 
-use super::input::get_dimensiuni_tabla;
+use super::{
+    input::get_dimensiuni_tabla,
+    miscari::{get_poz_rege, verif_sah},
+};
 
 /// Deseneaza tabla de joc
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
@@ -93,6 +96,21 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
         let (x_dest, y_dest) = draw_pos_multiplayer(dest.1 as f32, dest.0 as f32, l, guest);
         graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_src, y_ofs + y_src],))?;
         graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_dest, y_ofs + y_dest],))?;
+    }
+
+    // Se coloreaza cu rosu regele, daca e in sah.
+    if verif_sah(&state.tabla.mat, state.turn) {
+        let patrat_rosu = MeshBuilder::new()
+            .rectangle(
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(0.0, 0.0, l, l),
+                graphics::Color::RED,
+            )?
+            .build(ctx)?;
+
+        let (x, y) = get_poz_rege(&state.tabla.mat, state.turn);
+        let (x, y) = draw_pos_multiplayer(y as f32, x as f32, l, guest);
+        graphics::draw(ctx, &patrat_rosu, ([x_ofs + x, y_ofs + y],))?;
     }
 
     // Se coloreaza cu verde piesa selectata si

@@ -14,11 +14,7 @@ use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
 // FIXME: face prea multe lucruri
-pub(crate) fn muta(
-    tabla: &mut Tabla,
-    src_poz: (usize, usize),
-    dest_poz: (usize, usize),
-) -> String {
+pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize, usize)) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla.mat[src_poz.0][src_poz.1].clone();
     // Viitoarea pozitie a piesei
@@ -34,7 +30,8 @@ pub(crate) fn muta(
             // Pionul se muta doar pe o singura linie (cand nu ataca).
             if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
                 let pion_luat = (src_poz.0, dest_poz.1);
-                tabla.mat[dest_poz.0][dest_poz.1].piesa = tabla.mat[pion_luat.0][pion_luat.1].piesa.clone();
+                tabla.mat[dest_poz.0][dest_poz.1].piesa =
+                    tabla.mat[pion_luat.0][pion_luat.1].piesa.clone();
 
                 pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].afecteaza);
                 pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].atacat);
@@ -91,7 +88,6 @@ pub(crate) fn muta(
                 if input::in_board(dest_poz.0 as i32, poz_tura) {
                     if let Some(tura) = tabla.mat[dest_poz.0][poz_tura as usize].piesa.clone() {
                         if tura.tip == TipPiesa::Tura {
-                            println!("{} {}", dest_poz.0, poz_tura);
                             muta(
                                 tabla,
                                 (dest_poz.0, poz_tura as usize),
