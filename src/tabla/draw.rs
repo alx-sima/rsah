@@ -74,12 +74,12 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     Ok(())
 }
 
-pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
+pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
-    let guest = game_state.guest;
+    let guest = state.guest;
 
     // Se coloreaza cu albastru ultima miscare
-    if let Some((src, dest)) = game_state.tabla.ultima_miscare {
+    if let Some((src, dest)) = state.tabla.ultima_miscare {
         let patrat_albastru = MeshBuilder::new()
             .rectangle(
                 graphics::DrawMode::fill(),
@@ -97,7 +97,7 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
 
     // Se coloreaza cu verde piesa selectata si
     // cu galben mutarile posibile ale acesteia.
-    if let Some((x, y)) = game_state.piesa_sel {
+    if let Some((x, y)) = state.piesa_sel {
         // FIXME: CURSED??? sigur se pot face mai usor patrate
         let patrat_galben = MeshBuilder::new()
             .rectangle(
@@ -115,7 +115,7 @@ pub(crate) fn attack(game_state: &State, ctx: &mut ggez::Context) -> ggez::GameR
             )?
             .build(ctx)?;
 
-        for (i, j) in &game_state.miscari_disponibile {
+        for (i, j) in &state.miscari_disponibile {
             let (x, y) = draw_pos_multiplayer(*j as f32, *i as f32, l, guest);
             graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
         }

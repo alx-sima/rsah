@@ -1,4 +1,4 @@
-use std::{io::Read, net::TcpStream};
+use std::net::{TcpListener, TcpStream};
 
 use ggez::{
     conf,
@@ -7,7 +7,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{draw, miscari, Culoare, TipPiesa};
+use tabla::{draw, Culoare, TipPiesa};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -26,10 +26,15 @@ enum GameState {
 
 /// Variabilele globale ale jocului
 struct State {
+    // ====== Variabilele globale ======
+    /// Backend pt user interface
+    egui_backend: EguiBackend,
     /// In ce meniu/mod de joc e
     game_state: GameState,
     /// Tabla de joc
     tabla: tabla::Tabla,
+
+    // ====== Variabilele pentru joc ======
     /// Istoric miscari
     istoric: Vec<String>,
     /// Patratele disponibile
@@ -39,16 +44,19 @@ struct State {
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
     piesa_sel: Option<(usize, usize)>,
-    /// Ultima mutare (pt en passant si TODO: sa se arate pe tabla)
+
+    // ====== Editor ======
+    /// (doar pt editor) Piesa care se va pune la click.
     piesa_selectata_editor: TipPiesa,
+    // ====== doar multiplayer ======
     /// Conexiunea la celalalt jucator (pt multiplayer)
     stream: Option<TcpStream>,
     /// Adresa IP a jocului hostat
     address: String,
+    tcp_host: Option<TcpListener>,
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
-    egui_backend: EguiBackend,
 }
 
 impl Default for State {
@@ -63,6 +71,7 @@ impl Default for State {
             turn: Culoare::Alb,
             istoric: vec![],
             piesa_sel: None,
+            tcp_host: None,
             stream: None,
             guest: false,
         }
@@ -70,76 +79,47 @@ impl Default for State {
 }
 
 impl ggez::event::EventHandler<ggez::GameError> for State {
+    /// Logica jcocului
     fn update(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         let egui_ctx = self.egui_backend.ctx();
+
         match self.game_state {
-            GameState::MainMenu => {
-                gui::main_menu(self, &egui_ctx, ctx);
-            }
-            GameState::Game => {
+            GameState::Game | GameState::Multiplayer => {
                 gui::game(self, &egui_ctx);
+
+                tabla::game::turn_handler(ctx, self);
             }
             GameState::Editor => {
                 gui::editor(self, &egui_ctx, ctx);
+
+                tabla::editor::editor_handler(
+                    ctx,
+                    &mut self.tabla.mat,
+                    self.piesa_selectata_editor,
+                );
             }
-            GameState::Multiplayer => {
-                if (self.turn == Culoare::Negru) != self.guest {
-                    let mut buf = [0; 16];
-                    if let Ok(len) = self.stream.as_mut().unwrap().read(&mut buf) {
-                        let msg = std::str::from_utf8(&buf[..len]).unwrap();
-                        if let Some((src_poz, dest_poz)) =
-                            tabla::notatie::decode_move(&self.tabla.mat, msg, self.turn)
-                        {
-                            // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-                            tabla::game::muta(&mut self.tabla.mat, src_poz, dest_poz);
-
-                            // Randul urmatorului jucator
-                            // Schimba turn din alb in negru si din negru in alb
-                            self.turn = match self.turn {
-                                Culoare::Alb => Culoare::Negru,
-                                Culoare::Negru => Culoare::Alb,
-                            };
-
-                            miscari::verif_sah(&self.tabla.mat, self.turn);
-                        }
-                    }
-                }
+            GameState::MainMenu => {
+                gui::main_menu(self, &egui_ctx, ctx);
             }
         }
         Ok(())
     }
 
+    /// Grafica jocului
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         graphics::clear(ctx, graphics::Color::BLACK);
 
         if self.game_state != GameState::MainMenu {
             draw::board(ctx)?;
             draw::attack(self, ctx)?;
-            if self.game_state == GameState::Game
-                || self.game_state == GameState::Multiplayer
-                    && (self.turn == Culoare::Negru) == self.guest
-            {
-                if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-                    tabla::game::player_turn(
-                        ctx,
-                        &mut self.tabla,
-                        &mut self.piesa_sel,
-                        &mut self.miscari_disponibile,
-                        &mut self.turn,
-                        &mut self.istoric,
-                        &mut self.stream,
-                        self.guest,
-                    );
-                }
-            } else if self.game_state == GameState::Editor {
-                tabla::editor::player_turn(ctx, &mut self.tabla.mat, self.piesa_selectata_editor);
-            }
             draw::pieces(self, ctx)?;
         }
 
         graphics::draw(ctx, &self.egui_backend, ([0.0, 0.0],))?;
         graphics::present(ctx)
     }
+
+    // ======================= Layere de compatibilitate =======================
 
     /// Updateaza rezolutia logica a ecranului cand se schimba cea fizica,
     /// altfel imaginile ar fi desenate scalate.
@@ -148,7 +128,26 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         graphics::set_screen_coordinates(ctx, screen_rect).unwrap();
     }
 
-    // =================== Pt. ca egui sa captureze mouseul ===================
+    // =============================== Tastatura ===============================
+
+    /// Pt. ca egui sa captureze tastatura.
+    fn text_input_event(&mut self, _ctx: &mut Context, ch: char) {
+        self.egui_backend.input.text_input_event(ch);
+    }
+
+    /// Pt. tastele care nu corespund cu caractere.
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        keycode: event::KeyCode,
+        keymods: event::KeyMods,
+        _repeat: bool,
+    ) {
+        self.egui_backend.input.key_down_event(keycode, keymods);
+    }
+
+    // ================================= Mouse =================================
+
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,

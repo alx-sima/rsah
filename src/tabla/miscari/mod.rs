@@ -193,9 +193,9 @@ pub(crate) fn clear_influenta(tabla: &mut MatTabla, poz: PozitieSafe) {
 pub(crate) fn get_poz_rege(tabla: &MatTabla, culoare: Culoare) -> PozitieSafe {
     // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
     // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
-    for i in 0..8 {
-        for j in 0..8 {
-            if let Some(piesa) = &tabla[i][j].piesa {
+    for (i, line) in tabla.iter().enumerate().take(8) {
+        for (j, patrat) in line.iter().enumerate().take(8) {
+            if let Some(piesa) = &patrat.piesa {
                 if piesa.tip == TipPiesa::Rege && piesa.culoare == culoare {
                     return (i, j);
                 }

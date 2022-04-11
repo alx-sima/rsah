@@ -1,6 +1,11 @@
-use std::{io::Write, net::TcpStream};
+use std::{
+    io::{Read, Write},
+    net::TcpStream,
+};
 
-use crate::tabla::MatchState;
+use ggez::event::MouseButton;
+
+use crate::{tabla::MatchState, GameState, State};
 
 use super::{input, miscari, notatie, Culoare, MatTabla, Patratel, Piesa, Tabla, TipPiesa};
 
@@ -8,6 +13,7 @@ use super::{input, miscari, notatie, Culoare, MatTabla, Patratel, Piesa, Tabla, 
 /// recalculeaza noile pozitii atacate,
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
+// FIXME: face prea multe lucruri
 pub(crate) fn muta(
     tabla: &mut MatTabla,
     src_poz: (usize, usize),
@@ -100,74 +106,126 @@ pub(crate) fn muta(
     mutare
 }
 
-pub(crate) fn player_turn(
-    ctx: &mut ggez::Context,
+pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
+    // pe multiplayer, asteaptandu-se randul celuilalt jucator
+    if state.game_state == GameState::Multiplayer && (state.turn == Culoare::Negru) != state.guest {
+        await_move(state);
+    // FIXME: rezolva clickurile
+    } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
+        // Clickul se ia in considerare doar daca este in interiorul tablei
+        if let Some((click_x, click_y)) = input::get_square_under_mouse(ctx, state.guest) {
+            player_turn(
+                &mut state.tabla,
+                &mut state.piesa_sel,
+                &mut state.miscari_disponibile,
+                &mut state.turn,
+                &mut state.istoric,
+                &mut state.stream,
+                (click_y, click_x),
+            );
+        }
+    }
+}
+
+/// Handler pt randul celuilalt jucator (pe multiplayer).
+fn await_move(state: &mut State) {
+    let mut tcp_buffer = [0; 16];
+    if let Ok(len) = state.stream.as_ref().unwrap().read(&mut tcp_buffer) {
+        let msg = std::str::from_utf8(&tcp_buffer[..len]).unwrap();
+        if let Some((src_poz, dest_poz)) = notatie::decode_move(&state.tabla.mat, msg, state.turn) {
+            // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
+            muta(&mut state.tabla.mat, src_poz, dest_poz);
+            state.tabla.ultima_miscare = Some((src_poz, dest_poz));
+
+            // Randul urmatorului jucator
+            // Schimba turn din alb in negru si din negru in alb
+            state.turn = match state.turn {
+                Culoare::Alb => Culoare::Negru,
+                Culoare::Negru => Culoare::Alb,
+            };
+
+            verif_continua_jocul(&mut state.tabla, &state.turn);
+        }
+    }
+}
+
+// FIXME: prea multe argumente
+fn player_turn(
     tabla: &mut Tabla,
     piesa_sel: &mut Option<(usize, usize)>,
     miscari_disponibile: &mut Vec<(usize, usize)>,
     turn: &mut Culoare,
     istoric: &mut Vec<String>,
     stream: &mut Option<TcpStream>,
-    reversed: bool,
+    dest: (usize, usize),
 ) {
-    // Daca clickul este in interiorul tablei
-    if let Some((dest_j, dest_i)) = input::get_square_under_mouse(ctx, reversed) {
-        // Daca exista o piesa selectata...
-        if let Some(src_poz) = *piesa_sel {
-            // Daca miscarea este valida, efectueaza mutarea
-            if miscari_disponibile.contains(&(dest_i, dest_j)) {
-                let mut mov = muta(&mut tabla.mat, src_poz, (dest_i, dest_j));
-                tabla.ultima_miscare = Some((src_poz, (dest_i, dest_j)));
+    // Daca exista o piesa selectata...
+    if let Some(src) = *piesa_sel {
+        // Daca miscarea este valida, efectueaza mutarea
+        if miscari_disponibile.contains(&dest) {
+            let mut mov = muta(&mut tabla.mat, src, dest);
+            tabla.ultima_miscare = Some((src, dest));
 
-                // Randul urmatorului jucator
-                // Schimba turn din alb in negru si din negru in alb
-                *turn = match *turn {
-                    Culoare::Alb => Culoare::Negru,
-                    Culoare::Negru => Culoare::Alb,
-                };
+            // Randul urmatorului jucator
+            // Schimba turn din alb in negru si din negru in alb
+            *turn = match *turn {
+                Culoare::Alb => Culoare::Negru,
+                Culoare::Negru => Culoare::Alb,
+            };
 
-                if miscari::verif_sah(&tabla.mat, *turn) {
-                    // Daca e sah si nu exista miscari, e mat
-                    if !miscari::exista_miscari(&tabla.mat, *turn) {
-                        if *turn == Culoare::Alb {
-                            tabla.match_state = MatchState::AlbEMat;
-                        } else {
-                            tabla.match_state = MatchState::NegruEMat;
-                        }
-                        println!("{:?} e in mat", *turn);
-                        mov += "#";
+            verif_continua_jocul(tabla, turn);
 
-                    // altfel, e sah normal
-                    } else {
-                        println!("{:?} e in sah", *turn);
-                        mov += "+";
-                    }
-                // Daca nu e sah si nu exista miscari, e pat
-                } else if !miscari::exista_miscari(&tabla.mat, *turn) {
-                    // TODO
-                    tabla.match_state = MatchState::Pat;
-                    println!("{:?} e in pat", *turn);
-                }
-
-                istoric.push(mov.clone());
-
-                if let Some(stream) = stream {
-                    stream.write_all(mov.as_bytes()).unwrap();
-                }
+            if tabla.match_state == MatchState::AlbEMat
+                || tabla.match_state == MatchState::NegruEMat
+            {
+                mov += "#";
             }
-            // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
-            *piesa_sel = None;
-            *miscari_disponibile = vec![];
+            // TODO: mov += "+" daca e sah
 
-        // ...daca nu, o selecteaza (daca e de aceeasi culoare)
-        } else if let Some(piesa) = &tabla.mat[dest_i][dest_j].piesa {
-            if *turn == piesa.culoare {
-                *piesa_sel = Some((dest_i, dest_j));
-                let miscari = miscari::get_miscari(&tabla.mat, (dest_i, dest_j), false);
+            istoric.push(mov.clone());
 
-                *miscari_disponibile =
-                    miscari::nu_provoaca_sah(&tabla.mat, miscari, (dest_i, dest_j), *turn);
+            if let Some(stream) = stream {
+                stream.write_all(mov.as_bytes()).unwrap();
             }
         }
+        // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
+        *piesa_sel = None;
+        *miscari_disponibile = vec![];
+
+    // ...daca nu, o selecteaza (daca e de aceeasi culoare)
+    } else if let Some(piesa) = &tabla.mat[dest.0][dest.1].piesa {
+        if *turn == piesa.culoare {
+            *piesa_sel = Some(dest);
+            let miscari = miscari::get_miscari(&tabla.mat, dest, false);
+
+            *miscari_disponibile = miscari::nu_provoaca_sah(&tabla.mat, miscari, dest, *turn);
+        }
+    }
+}
+
+// TODO:
+/// Verifica daca jocul mai continua. Returneaza:
+/// - None: jocul continua normal;
+/// - Some([Alb | Negru]EMat): jocul s-a terminat, jucatorul e in mat;
+/// - Some(Pat): jocul s-a terminat cu egalitate;
+/// - Some(Playing): jocul continua, dar jucatorul e in sah (nu merita sa fac alt state doar pt asta).
+fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
+    if miscari::verif_sah(&tabla.mat, *turn) {
+        // Daca e sah si nu exista miscari, e mat.
+        if !miscari::exista_miscari(&tabla.mat, *turn) {
+            if *turn == Culoare::Alb {
+                tabla.match_state = MatchState::AlbEMat;
+            } else {
+                tabla.match_state = MatchState::NegruEMat;
+            }
+
+            // ...altfel, e sah normal.
+        } else {
+            //mov += "+";
+        }
+    // Daca nu e sah si nu exista miscari, e pat.
+    } else if !miscari::exista_miscari(&tabla.mat, *turn) {
+        // TODO:
+        tabla.match_state = MatchState::Pat;
     }
 }

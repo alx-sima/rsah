@@ -24,7 +24,7 @@ pub(crate) fn delete(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
 /// *click* => pune piesa *alba*;
 /// *click dr.* => pune piesa *neagra*;
 /// *clic mij.* => *sterge* piesa.
-pub(crate) fn player_turn(
+pub(crate) fn editor_handler(
     ctx: &mut ggez::Context,
     tabla: &mut [[Patratel; 8]; 8],
     piesa_selectata_editor: TipPiesa,

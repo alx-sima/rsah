@@ -112,7 +112,6 @@ pub(crate) fn decode_move(
         for (i, j) in &tabla[pozi][pozj].afecteaza {
             println!("{} {}", i, j);
             if let Some(piesa) = &tabla[*i][*j].piesa {
-                println!("({},{}):{:?}", i, j, piesa);
                 if piesa.culoare == turn && piesa.tip == tip_piesa {
                     if let Some(dif_i) = dif_i {
                         if *i == dif_i {

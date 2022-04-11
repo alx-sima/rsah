@@ -1,5 +1,5 @@
 use std::{
-    io::Write,
+    io::{ErrorKind, Write},
     net::{TcpListener, TcpStream},
 };
 
@@ -13,7 +13,7 @@ use crate::{
     GameState, State,
 };
 
-pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
+pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::Window::new("egui")
         .title_bar(false)
         .fixed_pos([0.0, 0.0])
@@ -26,70 +26,83 @@ pub(crate) fn main_menu(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mu
             ui.vertical_centered_justified(|ui| {
                 ui.collapsing("Local", |ui| {
                     if ui.button("Clasic").clicked() {
-                        game_state.turn = Culoare::Alb;
-                        game_state.game_state = GameState::Game;
-                        game_state.tabla.mat = generare::tabla_clasica();
+                        state.turn = Culoare::Alb;
+                        state.game_state = GameState::Game;
+                        state.tabla.mat = generare::tabla_clasica();
                     }
 
                     // TODO:
                     if ui.button("Aleator").clicked() {
-                        game_state.turn = Culoare::Alb;
-                        game_state.game_state = GameState::Game;
-                        game_state.tabla.mat = generare::tabla_random();
+                        state.game_state = GameState::Game;
+                        state.tabla.mat = generare::tabla_random();
                     }
                 });
 
                 // FIXME: centreaza collapsingurile
-                ui.collapsing("Online", |ui| {
-                    if ui.button("Host").clicked() {
-                        let listener = TcpListener::bind(game_state.address.as_str()).unwrap();
+                ui.horizontal(|ui| {
+                    ui.add(egui::TextEdit::singleline(&mut state.address));
+                    if let Some(listener) = &state.tcp_host {
+                        // Guestul a acceptat conexiunea
                         match listener.accept() {
-                            Ok((s, _addr)) => {
+                            Ok((s, _)) => {
                                 s.set_nonblocking(true).unwrap();
-                                game_state.turn = Culoare::Alb;
-                                game_state.tabla.mat = generare::tabla_clasica();
-                                game_state.stream = Some(s);
-                                game_state.game_state = GameState::Multiplayer;
-                            }
-                            Err(e) => {
-                                println!("couldn't get client: {}", e);
+                                state.stream = Some(s);
+                                // Nu mai asteapta alte conexiuni.
+                                state.tcp_host = None;
+                                state.game_state = GameState::Multiplayer;
+                                state.tabla.mat = generare::tabla_clasica();
+                                init_game(state);
                                 return;
                             }
-                        };
-                    }
 
-                    ui.horizontal(|ui| {
-                        ui.add(egui::TextEdit::singleline(&mut game_state.address));
+                            // Erorile WouldBlock inseamna ca conexiunea nu e
+                            // inca stabilita, deci pot fi ignorate.
+                            Err(e) if e.kind() != ErrorKind::WouldBlock => {
+                                state.tcp_host = None;
+                                println!("{}", e);
+                            }
+                            _ => {}
+                        }
+
+                        if ui.button("Cancel").clicked() {
+                            state.tcp_host = None;
+                        }
+                    } else {
+                        if ui.button("Host").clicked() {
+                            let s = TcpListener::bind(state.address.clone().as_str()).unwrap();
+                            s.set_nonblocking(true).unwrap();
+                            state.tcp_host = Some(s);
+                        }
                         if ui.button("Join").clicked() {
-                            match TcpStream::connect(game_state.address.as_str()) {
+                            match TcpStream::connect(state.address.clone().as_str()) {
                                 Ok(s) => {
                                     s.set_nonblocking(true).unwrap();
-                                    game_state.guest = true;
-                                    game_state.turn = Culoare::Alb;
-                                    game_state.tabla.mat = generare::tabla_clasica();
-                                    game_state.stream = Some(s);
-                                    game_state.game_state = GameState::Multiplayer;
+                                    state.tabla.mat = generare::tabla_clasica();
+                                    state.game_state = GameState::Multiplayer;
+                                    state.stream = Some(s);
+                                    state.guest = true;
+                                    init_game(state);
                                 }
                                 Err(e) => {
                                     println!("{}", e);
                                 }
                             };
                         }
-                    });
+                    }
                 });
-
-                if ui.button("Editor").clicked() {
-                    game_state.piesa_selectata_editor = TipPiesa::Pion;
-                    game_state.miscari_disponibile = vec![];
-                    game_state.piesa_sel = None;
-                    game_state.tabla = Default::default();
-                    game_state.game_state = GameState::Editor;
-                }
-
-                if ui.button("Quit").clicked() {
-                    ggez::event::quit(ctx);
-                }
             });
+
+            if ui.button("Editor").clicked() {
+                state.piesa_selectata_editor = TipPiesa::Pion;
+                state.piesa_sel = None;
+                init_game(state);
+                state.tabla = Default::default();
+                state.game_state = GameState::Editor;
+            }
+
+            if ui.button("Quit").clicked() {
+                ggez::event::quit(ctx);
+            }
         });
 }
 
@@ -111,7 +124,6 @@ pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
         egui::Window::new("egui-end-game")
             .title_bar(false)
             .show(egui_ctx, |ui| {
-
                 if *match_state == MatchState::Pat {
                     ui.label("Egalitate!");
                 } else if *match_state == MatchState::AlbEMat {
@@ -212,4 +224,10 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
         }
     }
     false
+}
+
+fn init_game(game_state: &mut State) {
+    game_state.miscari_disponibile = vec![];
+    game_state.tabla.ultima_miscare = None;
+    game_state.turn = Culoare::Alb;
 }
