@@ -15,7 +15,7 @@ pub(crate) fn place(
     }
 }
 
-/// Sterge piesa de pe pozitia *(i, j)*
+/// Sterge piesa de pe pozitia `(i, j)`
 pub(crate) fn delete(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
     tabla[i][j] = Default::default();
 }

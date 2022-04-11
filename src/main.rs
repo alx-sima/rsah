@@ -7,7 +7,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{draw, Culoare, TipPiesa};
+use tabla::{draw, Culoare, Pozitie, Tabla, TipPiesa};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -26,40 +26,44 @@ enum GameState {
 
 /// Variabilele globale ale jocului
 struct State {
-    // ====== Variabilele globale ======
+    // ================================ Globale ================================
     /// Backend pt user interface
     egui_backend: EguiBackend,
     /// In ce meniu/mod de joc e
     game_state: GameState,
     /// Tabla de joc
-    tabla: tabla::Tabla,
+    tabla: Tabla,
 
-    // ====== Variabilele pentru joc ======
+    // ================================== Joc ==================================
     /// Istoric miscari
     istoric: Vec<String>,
     /// Patratele disponibile
-    miscari_disponibile: Vec<(usize, usize)>,
+    miscari_disponibile: Vec<Pozitie>,
     /// Al cui e randul
     turn: Culoare,
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
-    piesa_sel: Option<(usize, usize)>,
+    piesa_sel: Option<Pozitie>,
 
-    // ====== Editor ======
+    // ================================ Editor =================================
     /// (doar pt editor) Piesa care se va pune la click.
     piesa_selectata_editor: TipPiesa,
-    // ====== doar multiplayer ======
-    /// Conexiunea la celalalt jucator (pt multiplayer)
-    stream: Option<TcpStream>,
+
+    // ============================== Multiplayer ==============================
     /// Adresa IP a jocului hostat
     address: String,
+    /// Listenerul pt. conexiune, cand clientul
+    /// hosteaza si asteapta un guest.
     tcp_host: Option<TcpListener>,
+    /// Conexiunea la celalalt jucator.
+    stream: Option<TcpStream>,
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
 }
 
 impl Default for State {
+    /// Valorile initiale ale variabilelor globale.
     fn default() -> Self {
         State {
             address: String::from("127.0.0.1:8080"),
@@ -79,7 +83,7 @@ impl Default for State {
 }
 
 impl ggez::event::EventHandler<ggez::GameError> for State {
-    /// Logica jcocului
+    /// Logica jcocului.
     fn update(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         let egui_ctx = self.egui_backend.ctx();
 
@@ -105,7 +109,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         Ok(())
     }
 
-    /// Grafica jocului
+    /// Grafica jocului.
     fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
         graphics::clear(ctx, graphics::Color::BLACK);
 

@@ -13,6 +13,7 @@ use crate::{
     GameState, State,
 };
 
+/// Randeaza home-screenul.
 pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::Window::new("egui")
         .title_bar(false)
@@ -106,6 +107,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
         });
 }
 
+/// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
 pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
     let match_state = &game_state.tabla.match_state;
     if *match_state == MatchState::Playing {
@@ -139,7 +141,8 @@ pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
     }
 }
 
-pub(crate) fn editor(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
+/// Randeaza meniul din editor.
+pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::Window::new("egui-editor")
         .title_bar(false)
         .fixed_pos([0.0, 0.0])
@@ -151,55 +154,39 @@ pub(crate) fn editor(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut g
             ui.set_width(x - 20.0);
             ui.set_height(y - 20.0);
 
+            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Pion, "Pion");
+            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Tura, "Tura");
+            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Cal, "Cal");
+            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Nebun, "Nebun");
             ui.radio_value(
-                &mut game_state.piesa_selectata_editor,
-                TipPiesa::Pion,
-                "Pion",
-            );
-            ui.radio_value(
-                &mut game_state.piesa_selectata_editor,
-                TipPiesa::Tura,
-                "Tura",
-            );
-            ui.radio_value(&mut game_state.piesa_selectata_editor, TipPiesa::Cal, "Cal");
-            ui.radio_value(
-                &mut game_state.piesa_selectata_editor,
-                TipPiesa::Nebun,
-                "Nebun",
-            );
-            ui.radio_value(
-                &mut game_state.piesa_selectata_editor,
+                &mut state.piesa_selectata_editor,
                 TipPiesa::Regina,
                 "Regina",
             );
-            ui.radio_value(
-                &mut game_state.piesa_selectata_editor,
-                TipPiesa::Rege,
-                "Rege",
-            );
+            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Rege, "Rege");
 
             ui.vertical_centered_justified(|ui| {
                 if ui.button("save").clicked() {
                     // Ambii regi trebuie sa existe
-                    if exista_rege(&game_state.tabla.mat, Culoare::Alb)
-                        && exista_rege(&game_state.tabla.mat, Culoare::Negru)
+                    if exista_rege(&state.tabla.mat, Culoare::Alb)
+                        && exista_rege(&state.tabla.mat, Culoare::Negru)
                     {
                         // Niciun rege nu trebuie sa fie in sah
                         // facut cu github copilot, poate trebuie refacut
-                        if !verif_sah(&game_state.tabla.mat, Culoare::Alb)
-                            && !verif_sah(&game_state.tabla.mat, Culoare::Negru)
+                        if !verif_sah(&state.tabla, Culoare::Alb)
+                            && !verif_sah(&state.tabla, Culoare::Negru)
                         {
                             let mut f = std::fs::File::create("tabla.txt").unwrap();
                             let mut s = String::new();
                             for i in 0..8 {
                                 for j in 0..8 {
-                                    s.push_str(&format!("{:?} ", game_state.tabla.mat[i][j]));
+                                    s.push_str(&format!("{:?} ", state.tabla.at((i, j))));
                                 }
                                 s.push('\n');
                             }
                             f.write_all(s.as_bytes()).unwrap();
                         }
-                        game_state.game_state = GameState::MainMenu;
+                        state.game_state = GameState::MainMenu;
                     }
                 }
 
@@ -207,12 +194,13 @@ pub(crate) fn editor(game_state: &mut State, egui_ctx: &EguiContext, ctx: &mut g
                     // TODO: help text pt editor
                 }
                 if ui.button("back").clicked() {
-                    game_state.game_state = GameState::MainMenu;
+                    state.game_state = GameState::MainMenu;
                 }
             });
         });
 }
 
+/// (pentru editor): verifica daca exista cate un rege pe tabla.
 fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
     for line in tabla.iter().take(8) {
         for item in line.iter().take(8) {

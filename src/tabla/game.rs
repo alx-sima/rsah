@@ -5,9 +5,9 @@ use std::{
 
 use ggez::event::MouseButton;
 
-use crate::{tabla::MatchState, GameState, State};
+use crate::{GameState, State};
 
-use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
+use super::{input, miscari, notatie, Culoare, MatchState, Patratel, Piesa, Tabla, TipPiesa};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
@@ -16,9 +16,9 @@ use super::{input, miscari, notatie, Culoare, Patratel, Piesa, Tabla, TipPiesa};
 // FIXME: face prea multe lucruri
 pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize, usize)) -> String {
     // Vechea pozitie a piesei
-    let p_old = tabla.mat[src_poz.0][src_poz.1].clone();
+    let p_old = tabla.at(src_poz).clone();
     // Viitoarea pozitie a piesei
-    let p_new = tabla.mat[dest_poz.0][dest_poz.1].clone();
+    let p_new = tabla.at(dest_poz).clone();
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
@@ -30,13 +30,12 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
             // Pionul se muta doar pe o singura linie (cand nu ataca).
             if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
                 let pion_luat = (src_poz.0, dest_poz.1);
-                tabla.mat[dest_poz.0][dest_poz.1].piesa =
-                    tabla.mat[pion_luat.0][pion_luat.1].piesa.clone();
+                tabla.get(dest_poz).piesa = tabla.at(pion_luat).piesa.clone();
 
-                pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].afecteaza);
-                pcs_to_reset.append(&mut tabla.mat[pion_luat.0][pion_luat.1].atacat);
+                pcs_to_reset.append(&mut tabla.get(pion_luat).afecteaza);
+                pcs_to_reset.append(&mut tabla.get(pion_luat).atacat);
 
-                tabla.mat[pion_luat.0][pion_luat.1].piesa = None;
+                tabla.get(pion_luat).piesa = None;
             }
         }
     }
@@ -53,14 +52,16 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     }
 
     // Muta piesa
-    tabla.mat[dest_poz.0][dest_poz.1].piesa = Some(Piesa {
+    tabla.get(dest_poz).piesa = Some(Piesa {
         mutat: true,
         ..p_old.clone().piesa.unwrap()
     });
+
     tabla.mat[src_poz.0][src_poz.1] = Patratel::default();
 
     // Adauga pozitia precedenta la lista istoricul *piesei*.
-    tabla.mat[dest_poz.0][dest_poz.1]
+    tabla
+        .get(dest_poz)
         .piesa
         .as_mut()
         .unwrap()
@@ -86,7 +87,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
             for i in [1, 2] {
                 let poz_tura = dest_poz.1 as i32 + i * dir;
                 if input::in_board(dest_poz.0 as i32, poz_tura) {
-                    if let Some(tura) = tabla.mat[dest_poz.0][poz_tura as usize].piesa.clone() {
+                    if let Some(tura) = tabla.at((dest_poz.0, poz_tura as usize)).piesa.clone() {
                         if tura.tip == TipPiesa::Tura {
                             muta(
                                 tabla,
@@ -190,12 +191,12 @@ fn player_turn(
         *miscari_disponibile = vec![];
 
     // ...daca nu, o selecteaza (daca e de aceeasi culoare)
-    } else if let Some(piesa) = &tabla.mat[dest.0][dest.1].piesa {
+    } else if let Some(piesa) = &tabla.at(dest).piesa {
         if *turn == piesa.culoare {
             *piesa_sel = Some(dest);
-            let miscari = miscari::get_miscari(&tabla, dest, false);
+            let miscari = miscari::get_miscari(tabla, dest, false);
 
-            *miscari_disponibile = miscari::nu_provoaca_sah(&tabla, miscari, dest, *turn);
+            *miscari_disponibile = miscari::nu_provoaca_sah(tabla, miscari, dest, *turn);
         }
     }
 }
@@ -207,9 +208,9 @@ fn player_turn(
 /// - Some(Pat): jocul s-a terminat cu egalitate;
 /// - Some(Playing): jocul continua, dar jucatorul e in sah (nu merita sa fac alt state doar pt asta).
 fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
-    if miscari::verif_sah(&tabla.mat, *turn) {
+    if miscari::verif_sah(tabla, *turn) {
         // Daca e sah si nu exista miscari, e mat.
-        if !miscari::exista_miscari(&tabla, *turn) {
+        if !miscari::exista_miscari(tabla, *turn) {
             if *turn == Culoare::Alb {
                 tabla.match_state = MatchState::AlbEMat;
             } else {
@@ -221,7 +222,7 @@ fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
             //mov += "+";
         }
     // Daca nu e sah si nu exista miscari, e pat.
-    } else if !miscari::exista_miscari(&tabla, *turn) {
+    } else if !miscari::exista_miscari(tabla, *turn) {
         // TODO:
         tabla.match_state = MatchState::Pat;
     }

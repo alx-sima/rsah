@@ -1,7 +1,7 @@
-use crate::tabla::{input::in_board, PozitieSafe, MatTabla};
+use crate::tabla::{input::in_board, Pozitie, MatTabla};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe *poz*
-pub(super) fn get(tabla: &MatTabla, poz: PozitieSafe, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
+pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
     let mut rez = vec![];
 
     // FIXME:

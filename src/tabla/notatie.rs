@@ -1,32 +1,26 @@
-use crate::tabla::TipPiesa;
-
-use super::{Culoare, MatTabla, Patratel};
+use super::{Culoare, MatTabla, Pozitie, TipPiesa};
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-/// Pentru mutarea de la *src_poz* la *dest_poz* (tuple de forma *(i, j)*), genereaza
+/// Pentru mutarea de la `src` la `dest`, genereaza
 /// [**algebraic notation**](https://en.wikipedia.org/wiki/Algebraic_notation_(chess))-ul.
-pub(crate) fn encode_move(
-    tabla: &mut [[Patratel; 8]; 8],
-    src_poz: (usize, usize),
-    dest_poz: (usize, usize),
-) -> String {
-    let p_old = tabla[src_poz.0][src_poz.1].clone();
-    let p_new = tabla[dest_poz.0][dest_poz.1].clone();
+pub(crate) fn encode_move(tabla: &mut MatTabla, src: Pozitie, dest: Pozitie) -> String {
+    let p_old = tabla[src.0][src.1].clone();
+    let p_new = tabla[dest.0][dest.1].clone();
     // Adaugare miscare in istoric
     // FIXME: scapa de unwrap
     let mut mutare = format!("{}", p_old.clone().piesa.unwrap().tip);
 
     let mut scrie_lin = false;
     let mut scrie_col = false;
-    for k in &tabla[dest_poz.0][dest_poz.1].atacat {
+    for k in &tabla[dest.0][dest.1].atacat {
         // Exista o alta piesa care ataca celula destinatie...
-        if k.0 != src_poz.0 || k.1 != src_poz.1 {
+        if k.0 != src.0 || k.1 != src.1 {
             // ... si e de acelasi tip
             if tabla[k.0 as usize][k.1 as usize].piesa == p_old.clone().piesa {
                 // Daca sunt pe aceeasi coloana se va afisa linia
-                if k.1 == src_poz.1 {
+                if k.1 == src.1 {
                     scrie_lin = true;
                 // Daca nu, se scrie coloana, indiferent daca sunt pe aceeasi linie sau nu (se poate intampla la cai de ex.)
                 } else {
@@ -42,31 +36,31 @@ pub(crate) fn encode_move(
         // Ce ai facut: 1 + "a" = "1a"
 
         // 65 = 'a'
-        mutare += ((src_poz.1 as u8 + 97u8) as char).to_string().as_str();
+        mutare += ((src.1 as u8 + 97u8) as char).to_string().as_str();
     }
     if scrie_lin {
-        mutare += (8 - src_poz.0).to_string().as_str();
+        mutare += (8 - src.0).to_string().as_str();
     }
 
     if p_new.piesa.is_some() {
         mutare += "x"
     }
 
-    mutare += ((dest_poz.1 as u8 + 97u8) as char).to_string().as_str();
-    mutare += (8 - dest_poz.0).to_string().as_str();
+    mutare += ((dest.1 as u8 + 97u8) as char).to_string().as_str();
+    mutare += (8 - dest.0).to_string().as_str();
     mutare
 }
 
-/// Inversul operatiei **encode_move**:
-/// Din stringul *mov* si pozitiile pieselor de pe *tabla*,
+/// Inversul operatiei [encode_move]:
+/// Din stringul `mov` si pozitiile pieselor de pe `tabla`,
 /// se deduc pozitiile de unde si pana unde a fost mutata piesa.
-/// Rezultatul va fi *Some((src_i, src_j), (dest_i, dest_j))*
-/// sau *None* (stringul nu este valid).
+/// Rezultatul va fi `Some((src_i, src_j), (dest_i, dest_j))`
+/// sau `None` (stringul nu este valid).
 pub(crate) fn decode_move(
     tabla: &MatTabla,
     mov: &str,
     turn: Culoare,
-) -> Option<((usize, usize), (usize, usize))> {
+) -> Option<(Pozitie, Pozitie)> {
     lazy_static! {
         static ref REGX: Regex =
             Regex::new(r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?$").unwrap();

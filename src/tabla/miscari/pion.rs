@@ -1,8 +1,8 @@
-use crate::tabla::{input::in_board, Culoare, MatTabla, PozitieSafe, Tabla, TipPiesa};
+use crate::tabla::{input::in_board, Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 /// TODO: repara mismatch isize-usize pt readability
-pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<PozitieSafe> {
+pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
     let mut rez = Vec::new();
     let i = i as usize;
     let j = j as usize;
@@ -38,10 +38,10 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 /// Returneaza pozitiile pe care le poate ataca pionul.
 /// *pe_bune* inseamna ca trebuie sa existe o piesa atacata.
 /// TODO: nume mai sugestiv
-pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<PozitieSafe> {
+pub(super) fn ataca(tabla: &Tabla, poz: Pozitie, pe_bune: bool) -> Vec<Pozitie> {
     let mut rez = vec![];
 
-    let culoare = tabla.mat[poz.0][poz.1].piesa.clone().unwrap().culoare;
+    let culoare = tabla.at(poz).piesa.clone().unwrap().culoare;
     let i = if culoare == Culoare::Alb {
         poz.0 - 1
     } else {
@@ -59,12 +59,11 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Pozit
                 continue;
             }
 
-            if let Some(victima) = &tabla.mat[i][j].piesa {
+            if let Some(victima) = &tabla.at((i, j)).piesa {
                 if victima.culoare != culoare {
                     rez.push((i, j));
                 }
-            // TODO: ceva e imbarligat pe aici
-            } else if let Some(victima) = &tabla.mat[poz.0][j].piesa {
+            } else if let Some(victima) = &tabla.at((poz.0, j)).piesa {
                 if victima.culoare != culoare && verif_en_passant(tabla, poz.0, j) {
                     rez.push((i, j));
                 }
@@ -82,11 +81,9 @@ pub(super) fn ataca(tabla: &Tabla, poz: PozitieSafe, pe_bune: bool) -> Vec<Pozit
 fn verif_en_passant(tabla: &Tabla, i: usize, j: usize) -> bool {
     if let Some((src, dest)) = &tabla.ultima_miscare {
         if i == dest.0 && j == dest.1 {
-            if let Some(piesa) = &tabla.mat[i][j].piesa {
-                if piesa.tip == TipPiesa::Pion {
-                    if (dest.0 as isize - src.0 as isize).abs() == 2 {
-                        return true;
-                    }
+            if let Some(piesa) = &tabla.at((i, j)).piesa {
+                if piesa.tip == TipPiesa::Pion && (dest.0 as isize - src.0 as isize).abs() == 2 {
+                    return true;
                 }
             }
         }

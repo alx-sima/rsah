@@ -7,34 +7,30 @@ use super::{
     miscari::{get_poz_rege, verif_sah},
 };
 
-/// Deseneaza tabla de joc
+/// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
-    // TODO: pune culorile din gosah?
-    let negru = graphics::Color::from_rgb(0, 0, 0);
-    let alb = graphics::Color::from_rgb(255, 255, 255);
-
     // TODO: mesh mai scurt?
     let mesh = MeshBuilder::new()
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(0.0, 0.0, l, l),
-            alb,
+            graphics::Color::WHITE,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(l, 0.0, l, l),
-            negru,
+            graphics::Color::BLACK,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(0.0, l, l, l),
-            negru,
+            graphics::Color::BLACK,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(l, l, l, l),
-            alb,
+            graphics::Color::WHITE,
         )?
         .build(ctx)?;
 
@@ -51,14 +47,14 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
     Ok(())
 }
 
-/// Deseneaza piesele
+/// Deseneaza piesele de pe tabla.
 pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
 
     for i in 0..8 {
         for j in 0..8 {
             let (i_pies, j_pies) = if state.guest { (7 - i, 7 - j) } else { (i, j) };
-            if let Some(patratel) = &state.tabla.mat[i_pies][j_pies].piesa {
+            if let Some(patratel) = &state.tabla.at((i_pies, j_pies)).piesa {
                 let img = graphics::Image::new(
                     ctx,
                     &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.tip),
@@ -77,20 +73,16 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     Ok(())
 }
 
+/// Afiseaza ultima miscare, daca regele e in sah, piesa
+/// selectata si miscarile disponibile ale acesteia.
+// TODO: sparge in mai multe functii
 pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
     let guest = state.guest;
 
     // Se coloreaza cu albastru ultima miscare
     if let Some((src, dest)) = state.tabla.ultima_miscare {
-        let patrat_albastru = MeshBuilder::new()
-            .rectangle(
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(0.0, 0.0, l, l),
-                // FIXME: o culoare mai frumoasa
-                graphics::Color::BLUE,
-            )?
-            .build(ctx)?;
+        let patrat_albastru = build_square(ctx, l, graphics::Color::BLUE)?;
 
         let (x_src, y_src) = draw_pos_multiplayer(src.1 as f32, src.0 as f32, l, guest);
         let (x_dest, y_dest) = draw_pos_multiplayer(dest.1 as f32, dest.0 as f32, l, guest);
@@ -99,14 +91,8 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     }
 
     // Se coloreaza cu rosu regele, daca e in sah.
-    if verif_sah(&state.tabla.mat, state.turn) {
-        let patrat_rosu = MeshBuilder::new()
-            .rectangle(
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(0.0, 0.0, l, l),
-                graphics::Color::RED,
-            )?
-            .build(ctx)?;
+    if verif_sah(&state.tabla, state.turn) {
+        let patrat_rosu = build_square(ctx, l, graphics::Color::RED)?;
 
         let (x, y) = get_poz_rege(&state.tabla.mat, state.turn);
         let (x, y) = draw_pos_multiplayer(y as f32, x as f32, l, guest);
@@ -116,22 +102,8 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     // Se coloreaza cu verde piesa selectata si
     // cu galben mutarile posibile ale acesteia.
     if let Some((x, y)) = state.piesa_sel {
-        // FIXME: CURSED??? sigur se pot face mai usor patrate
-        let patrat_galben = MeshBuilder::new()
-            .rectangle(
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(0.0, 0.0, l, l),
-                graphics::Color::YELLOW,
-            )?
-            .build(ctx)?;
-
-        let patrat_verde = MeshBuilder::new()
-            .rectangle(
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(0.0, 0.0, l, l),
-                graphics::Color::GREEN,
-            )?
-            .build(ctx)?;
+        let patrat_galben = build_square(ctx, l, graphics::Color::YELLOW)?;
+        let patrat_verde = build_square(ctx, l, graphics::Color::GREEN)?;
 
         for (i, j) in &state.miscari_disponibile {
             let (x, y) = draw_pos_multiplayer(*j as f32, *i as f32, l, guest);
@@ -151,4 +123,19 @@ fn draw_pos_multiplayer(x: f32, y: f32, l: f32, guest: bool) -> (f32, f32) {
     } else {
         (x * l, y * l)
     }
+}
+
+/// Construieste un patrat cu culoarea si dimensiunea specificate.
+fn build_square(
+    ctx: &mut ggez::Context,
+    l: f32,
+    colour: graphics::Color,
+) -> Result<graphics::Mesh, ggez::GameError> {
+    MeshBuilder::new()
+        .rectangle(
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(0.0, 0.0, l, l),
+            colour,
+        )?
+        .build(ctx)
 }

@@ -1,23 +1,75 @@
-/// desenarea tablei si a pieselor de pe aceasta
-pub(crate) mod draw;
-/// amplasarea pieselor (in modul editor)
-/// pt. a crea scenarii de joc
-pub(crate) mod editor;
-/// mutarea pieselor pe parcursul unui joc
-pub(crate) mod game;
-/// aranjarea pieselor pe tabla
-/// inaintea inceperii jocului
-pub(crate) mod generare;
-/// procesarea clickurilor si centrarea tablei
-/// in functie de dimensiunile aplicatiei
-pub(crate) mod input;
-/// gasirea patratelelor atacate de o anumita piesa,
-/// sau a caror modificare o pot afecta
-pub(crate) mod miscari;
-/// deducerea notatiei algebrice
-/// dintr-o miscare (sau invers)
-pub(crate) mod notatie;
+#[derive(Clone, Default)]
+pub(crate) struct Tabla {
+    pub(crate) mat: MatTabla,
+    pub(crate) match_state: MatchState,
+    pub(crate) ultima_miscare: Option<(Pozitie, Pozitie)>,
+}
 
+impl Tabla {
+    /// Returneaza patratul de pe `poz`.
+    pub(crate) fn at(&self, poz: Pozitie) -> &Patratel {
+        &self.mat[poz.0][poz.1]
+    }
+
+    /// Returneaza o referinta mutable a patratului de pe `poz`.
+    pub(crate) fn get(&mut self, poz: Pozitie) -> &mut Patratel {
+        &mut self.mat[poz.0][poz.1]
+    }
+}
+
+/// O matrice 8x8 de [Patratel].
+pub(crate) type MatTabla = [[Patratel; 8]; 8];
+
+/// Un patrat de pe tabla, care poate avea o [Piesa];
+/// retine si pozitia pieselor care il ataca.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Patratel {
+    /// piesa de pe acel patrat (daca exista)
+    pub(crate) piesa: Option<Piesa>,
+    /// pozitiile pieselor care ataca acest patrat (indiferent de culoare)
+    pub(crate) atacat: Vec<Pozitie>,
+    /// piesele care, prin modificarea acestui patrat, pot fi afectate
+    pub(crate) afecteaza: Vec<Pozitie>,
+}
+
+/// O piesa de sah.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Piesa {
+    /// ce piesa e
+    pub(crate) tip: TipPiesa,
+    /// Oare?
+    pub(crate) culoare: Culoare,
+    /// daca piesa a mai fost mutata
+    /// (pt rocada, en passant etc.)
+    /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
+    pub(crate) mutat: bool,
+    /// Pozitiile pe care piesa a fost inainte
+    pub(crate) pozitii_anterioare: Vec<Pozitie>,
+}
+
+impl Piesa {
+    pub(crate) fn new(tip: TipPiesa, culoare: Culoare) -> Piesa {
+        Piesa {
+            pozitii_anterioare: vec![],
+            mutat: false,
+            culoare,
+            tip,
+        }
+    }
+}
+
+/// culoarea unei piese (+ a jucatorului care o detine);
+/// folosita si pentru a retine al cui este randul sa mute
+/// FIXME: :)))
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Culoare {
+    /// Culoarea neagra.
+    Alb,
+    /// Culoarea alba.
+    Negru,
+}
+
+/// Tipul unei piese.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum TipPiesa {
     Pion,
@@ -47,76 +99,46 @@ impl std::fmt::Display for TipPiesa {
     }
 }
 
-/// culoarea unei piese (+ a jucatorului care o detine);
-/// folosita si pentru a retine al cui este randul sa mute
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Culoare {
-    Alb,
-    Negru,
-}
-
-/// o piesa de pe tabla
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Piesa {
-    /// ce piesa e
-    pub(crate) tip: TipPiesa,
-    /// Oare?
-    pub(crate) culoare: Culoare,
-    /// daca piesa a mai fost mutata
-    /// (pt rocada, en passant etc.)
-    /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
-    pub(crate) mutat: bool,
-    /// Pozitiile pe care piesa a fost inainte
-    pub(crate) pozitii_anterioare: Vec<PozitieSafe>,
-}
-
-impl Piesa {
-    pub(crate) fn new(tip: TipPiesa, culoare: Culoare) -> Piesa {
-        Piesa {
-            pozitii_anterioare: vec![],
-            mutat: false,
-            culoare,
-            tip,
-        }
-    }
-}
-
-/// Un patrat de pe tabla, care poate avea o **piesa**;
-/// retine si pozitiile *(i, j)* pieselor care il ataca.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Patratel {
-    /// piesa de pe acel patrat (daca exista)
-    pub(crate) piesa: Option<Piesa>,
-    /// pozitiile (i, j) pieselor care ataca acest patrat (indiferent de culoare)
-    pub(crate) atacat: Vec<PozitieSafe>,
-    /// piesele care, prin modificarea acestui patrat, pot fi afectate
-    pub(crate) afecteaza: Vec<PozitieSafe>,
-}
-
-#[derive(Clone, Default)]
-pub(crate) struct Tabla {
-    pub(crate) mat: MatTabla,
-    pub(crate) match_state: MatchState,
-    pub(crate) ultima_miscare: Option<(PozitieSafe, PozitieSafe)>,
-}
-
+/// In ce stadiu se poate afla jocul de sah.
 #[derive(Clone, PartialEq)]
 pub(crate) enum MatchState {
+    /// Normal
     Playing,
+    /// Negru castiga
     AlbEMat,
+    /// Alb castiga
     NegruEMat,
+    /// Egalitate
     Pat,
 }
 
-// FIXME:
 impl Default for MatchState {
+    /// Incepe jocul cu stadiul normal.
     fn default() -> Self {
         MatchState::Playing
     }
 }
 
-/// O **tabla** de sah este o matrice 8x8 de *patratele*.
-pub(crate) type MatTabla = [[Patratel; 8]; 8];
+/// Coordonatele [Patratel]or de pe [MatTabla]
+/// care sunt garantate sa existe si sa fie valide.
+pub(crate) type Pozitie = (usize, usize);
 
-/// Coordonatele patratelor care sunt garantate sa existe si sa fie valide.
-pub(crate) type PozitieSafe = (usize, usize);
+/// desenarea tablei si a pieselor de pe aceasta
+pub(crate) mod draw;
+/// amplasarea pieselor (in modul editor)
+/// pt. a crea scenarii de joc
+pub(crate) mod editor;
+/// mutarea pieselor pe parcursul unui joc
+pub(crate) mod game;
+/// aranjarea pieselor pe tabla
+/// inaintea inceperii jocului
+pub(crate) mod generare;
+/// procesarea clickurilor si centrarea tablei
+/// in functie de dimensiunile aplicatiei
+pub(crate) mod input;
+/// gasirea patratelelor atacate de o anumita piesa,
+/// sau a caror modificare o pot afecta
+pub(crate) mod miscari;
+/// deducerea notatiei algebrice
+/// dintr-o miscare (sau invers)
+pub(crate) mod notatie;
