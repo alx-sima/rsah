@@ -1,4 +1,7 @@
-use std::net::{TcpListener, TcpStream};
+use std::{
+    fmt,
+    net::{TcpListener, TcpStream},
+};
 
 use ggez::{
     conf,
@@ -27,19 +30,20 @@ enum GameState {
 /// Variabilele globale ale jocului
 struct State {
     // ================================ Globale ================================
-    /// Backend pt user interface
+    /// Backend pt user interface.
     egui_backend: EguiBackend,
-    /// In ce meniu/mod de joc e
+    /// In ce meniu/mod de joc e.
     game_state: GameState,
+    /// Ce aranjament al tablei e selectat.
+    game_mode: GameMode,
+    game_layouts: Vec<String>,
     /// Tabla de joc
     tabla: Tabla,
 
     // ================================== Joc ==================================
-    /// Istoric miscari
-    istoric: Vec<String>,
-    /// Patratele disponibile
+    /// Patratele disponibile.
     miscari_disponibile: Vec<Pozitie>,
-    /// Al cui e randul
+    /// Al cui e randul.
     turn: Culoare,
     /// Pozitia piesei pe care a fost dat click pt a se muta
     /// (marcata cu un patrat verde)
@@ -47,7 +51,8 @@ struct State {
 
     // ================================ Editor =================================
     /// (doar pt editor) Piesa care se va pune la click.
-    piesa_selectata_editor: TipPiesa,
+    piesa_sel_editor: TipPiesa,
+    save_name_editor: String,
 
     // ============================== Multiplayer ==============================
     /// Adresa IP a jocului hostat
@@ -62,18 +67,37 @@ struct State {
     guest: bool,
 }
 
+#[derive(PartialEq)]
+enum GameMode {
+    Clasic,
+    Aleatoriu,
+    Custom(String),
+}
+
+impl fmt::Display for GameMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GameMode::Clasic => write!(f, "Clasic"),
+            GameMode::Aleatoriu => write!(f, "Aleatoriu"),
+            GameMode::Custom(s) => write!(f, "Custom: {}", s),
+        }
+    }
+}
+
 impl Default for State {
     /// Valorile initiale ale variabilelor globale.
     fn default() -> Self {
         State {
             address: String::from("127.0.0.1:8080"),
-            piesa_selectata_editor: TipPiesa::Pion,
+            save_name_editor: String::from("save"),
             egui_backend: EguiBackend::default(),
+            piesa_sel_editor: TipPiesa::Pion,
             game_state: GameState::MainMenu,
+            game_mode: GameMode::Clasic,
             miscari_disponibile: vec![],
             tabla: Default::default(),
+            game_layouts: vec![],
             turn: Culoare::Alb,
-            istoric: vec![],
             piesa_sel: None,
             tcp_host: None,
             stream: None,
@@ -96,11 +120,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
             GameState::Editor => {
                 gui::editor(self, &egui_ctx, ctx);
 
-                tabla::editor::editor_handler(
-                    ctx,
-                    &mut self.tabla.mat,
-                    self.piesa_selectata_editor,
-                );
+                tabla::editor::editor_handler(ctx, &mut self.tabla.mat, self.piesa_sel_editor);
             }
             GameState::MainMenu => {
                 gui::main_menu(self, &egui_ctx, ctx);
@@ -115,7 +135,9 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
         if self.game_state != GameState::MainMenu {
             draw::board(ctx)?;
-            draw::attack(self, ctx)?;
+            if self.game_state != GameState::Editor {
+                draw::attack(self, ctx)?;
+            }
             draw::pieces(self, ctx)?;
         }
 
@@ -189,7 +211,9 @@ fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
 }
 
 fn main() -> ggez::GameResult {
-    let state = State::default();
+    let mut state = State::default();
     let (ctx, event_loop) = build_context()?;
+    // FIXME: gaseste-i un alt loc
+    state.game_layouts = tabla::editor::list_files(&ctx);
     event::run(ctx, event_loop, state);
 }

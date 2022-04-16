@@ -1,6 +1,9 @@
-use ggez::event::MouseButton;
+use ggez::{event::MouseButton, filesystem};
+use regex::Regex;
 
-use super::{input, Culoare, Patratel, Piesa, TipPiesa};
+use super::{input, Culoare, MatTabla, Patratel, Piesa, TipPiesa};
+
+use lazy_static::lazy_static;
 
 /// Amplaseaza piesa 'tip' a jucatorului 'culoare' la (i, j)
 pub(crate) fn place(
@@ -46,4 +49,35 @@ pub(crate) fn editor_handler(
             delete(tabla, i, j);
         }
     }
+}
+
+/// Incarca layoutul din fisierul `path`.
+/// Returneaza `None` daca fisierul nu poate fi incarcat.
+pub(crate) fn load_file(ctx: &ggez::Context, path: &String) -> Option<MatTabla> {
+    let f = filesystem::open(ctx, path).unwrap();
+    serde_json::from_reader(f).ok()
+}
+
+/// Cauta toate fisierele cu extensia `.json`
+/// din filesistem care contin un layout valid.
+pub(crate) fn list_files(ctx: &ggez::Context) -> Vec<String> {
+    lazy_static! {
+        static ref PATTERN: Regex = Regex::new(r"(.*)\.json$").unwrap();
+    };
+    let mut res = vec![];
+
+    if let Ok(files) = filesystem::read_dir(ctx, "/") {
+        for file in files {
+            let file = file.to_str().unwrap();
+            if PATTERN.is_match(file) && layout_valid(ctx, &file.to_owned()) {
+                res.push(file.to_owned());
+            }
+        }
+    }
+    res
+}
+
+/// Verifica daca layoutul din fisierul `path` este valid.
+fn layout_valid(ctx: &ggez::Context, path: &String) -> bool {
+    load_file(ctx, path).is_some()
 }

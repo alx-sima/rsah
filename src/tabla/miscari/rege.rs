@@ -31,6 +31,7 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
     rez
 }
 
+// FIXME: verifica daca dupa rocada se intampla ceva nasty, gen sah
 /// Se cauta pozitiile unde, daca este mutat regele, se face rocada.
 pub(super) fn rocada(tabla: &Tabla, i: i32, j: i32) -> Vec<Pozitie> {
     let mut rez = vec![];

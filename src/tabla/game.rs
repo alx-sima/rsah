@@ -7,7 +7,11 @@ use ggez::event::MouseButton;
 
 use crate::{GameState, State};
 
-use super::{input, miscari, notatie, Culoare, MatchState, Patratel, Piesa, Tabla, TipPiesa};
+use super::{
+    input,
+    miscari::{self, verif_sah},
+    notatie, Culoare, MatchState, Patratel, Piesa, Tabla, TipPiesa,
+};
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
 /// recalculeaza noile pozitii atacate,
@@ -117,7 +121,6 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
                 &mut state.piesa_sel,
                 &mut state.miscari_disponibile,
                 &mut state.turn,
-                &mut state.istoric,
                 &mut state.stream,
                 (click_y, click_x),
             );
@@ -142,7 +145,7 @@ fn await_move(state: &mut State) {
                 Culoare::Negru => Culoare::Alb,
             };
 
-            verif_continua_jocul(&mut state.tabla, &state.turn);
+            verif_continua_jocul(&mut state.tabla, state.turn);
         }
     }
 }
@@ -153,7 +156,6 @@ fn player_turn(
     piesa_sel: &mut Option<(usize, usize)>,
     miscari_disponibile: &mut Vec<(usize, usize)>,
     turn: &mut Culoare,
-    istoric: &mut Vec<String>,
     stream: &mut Option<TcpStream>,
     dest: (usize, usize),
 ) {
@@ -171,16 +173,17 @@ fn player_turn(
                 Culoare::Negru => Culoare::Alb,
             };
 
-            verif_continua_jocul(tabla, turn);
+            tabla.match_state = verif_continua_jocul(tabla, *turn);
 
             if tabla.match_state == MatchState::AlbEMat
                 || tabla.match_state == MatchState::NegruEMat
             {
                 mov += "#";
+            } else if verif_sah(tabla, *turn) {
+                mov += "+";
             }
-            // TODO: mov += "+" daca e sah
 
-            istoric.push(mov.clone());
+            tabla.istoric.push(mov.clone());
 
             if let Some(stream) = stream {
                 stream.write_all(mov.as_bytes()).unwrap();
@@ -201,29 +204,189 @@ fn player_turn(
     }
 }
 
-// TODO:
-/// Verifica daca jocul mai continua. Returneaza:
-/// - None: jocul continua normal;
-/// - Some([Alb | Negru]EMat): jocul s-a terminat, jucatorul e in mat;
-/// - Some(Pat): jocul s-a terminat cu egalitate;
-/// - Some(Playing): jocul continua, dar jucatorul e in sah (nu merita sa fac alt state doar pt asta).
-fn verif_continua_jocul(tabla: &mut Tabla, turn: &Culoare) {
-    if miscari::verif_sah(tabla, *turn) {
-        // Daca e sah si nu exista miscari, e mat.
-        if !miscari::exista_miscari(tabla, *turn) {
-            if *turn == Culoare::Alb {
-                tabla.match_state = MatchState::AlbEMat;
-            } else {
-                tabla.match_state = MatchState::NegruEMat;
-            }
-
-            // ...altfel, e sah normal.
-        } else {
-            //mov += "+";
+// Verifica daca piesele ramase pot termina meciul cu mat
+fn verif_piese_destule(tabla: &Tabla) -> bool {
+    let (
+        mut cal_alb,
+        mut cal_negru,
+        mut nebun_alb_alb,
+        mut nebun_alb_negru,
+        mut nebun_negru_alb,
+        mut nebun_negru_negru,
+        mut ok,
+    ) = (0, 0, 0, 0, 0, 0, true);
+    // Cautam piesele ramase pe toata tabla (daca se gasesc alte piese decat cal, nebun si rege sau mai multe de acelasi fel, meciul poate fi terminat cu mat => oprim cautarea)
+    for i in 0..8 {
+        if !ok {
+            break;
         }
-    // Daca nu e sah si nu exista miscari, e pat.
-    } else if !miscari::exista_miscari(tabla, *turn) {
-        // TODO:
-        tabla.match_state = MatchState::Pat;
+        for j in 0..8 {
+            if !ok {
+                break;
+            }
+            if let Some(piesa) = &tabla.at((i, j)).piesa {
+                if piesa.tip == TipPiesa::Cal {
+                    if piesa.culoare == Culoare::Alb {
+                        cal_alb += 1;
+                        if cal_alb > 1 {
+                            ok = false;
+                        }
+                    } else {
+                        cal_negru += 1;
+                        if cal_negru > 1 {
+                            ok = false;
+                        }
+                    }
+                } else if piesa.tip == TipPiesa::Nebun {
+                    if piesa.culoare == Culoare::Alb {
+                        if (i + j) % 2 == 0 {
+                            nebun_alb_alb += 1;
+                            if nebun_alb_alb > 1 {
+                                ok = false;
+                            }
+                        } else {
+                            nebun_alb_negru += 1;
+                            if nebun_alb_negru > 1 {
+                                ok = false;
+                            }
+                        }
+                    } else {
+                        if (i + j) % 2 == 0 {
+                            nebun_negru_alb += 1;
+                            if nebun_negru_alb > 1 {
+                                ok = false;
+                            }
+                        } else {
+                            nebun_negru_negru += 1;
+                            if nebun_negru_negru > 1 {
+                                ok = false;
+                            }
+                        }
+                    }
+                } else if piesa.tip != TipPiesa::Rege {
+                    ok = false;
+                }
+            }
+        }
     }
+
+    // Verificam daca exista unul din cazurile de pat (rege + cal vs rege;    rege + nebun vs rege;    rege + nebun vs rege + nebun unde nebunii sunt pe patrat de acelasi culoare)
+    if ok {
+        // Cal + nicio alta piesa
+        if cal_alb == 1
+            && (cal_negru == 1
+                || nebun_alb_alb == 1
+                || nebun_alb_negru == 1
+                || nebun_negru_alb == 1
+                || nebun_negru_negru == 1)
+        {
+            ok = false;
+        }
+        if cal_negru == 1
+            && (cal_alb == 1
+                || nebun_alb_alb == 1
+                || nebun_alb_negru == 1
+                || nebun_negru_alb == 1
+                || nebun_negru_negru == 1)
+        {
+            ok = false;
+        }
+
+        // Nebun + nicio alta piesa / nebun pe patrat de aceeasi culoare
+        if nebun_alb_alb == 1
+            && (cal_alb == 1 || cal_negru == 1 || nebun_alb_negru == 1 || nebun_negru_negru == 1)
+        {
+            ok = false;
+        }
+        if nebun_alb_negru == 1
+            && (cal_alb == 1 || cal_negru == 1 || nebun_alb_alb == 1 || nebun_negru_alb == 1)
+        {
+            ok = false;
+        }
+        if nebun_negru_alb == 1
+            && (cal_alb == 1 || cal_negru == 1 || nebun_alb_negru == 1 || nebun_negru_negru == 1)
+        {
+            ok = false;
+        }
+        if nebun_negru_negru == 1
+            && (cal_alb == 1 || cal_negru == 1 || nebun_alb_alb == 1 || nebun_negru_alb == 1)
+        {
+            ok = false;
+        }
+    }
+    return ok;
+}
+
+// Verificam daca aceeasi pozitie a avut loc de 3 ori consecutiv
+fn threefold(tabla: &Tabla) -> bool {
+    let istoric = &tabla.istoric;
+
+    // Trebuie sa existe minimum 9 miscari pentru a avea 3 pozitii la fel consecutive
+    if istoric.len() < 9 {
+        return false;
+    }
+    let last = istoric.len() - 1;
+    let mut ok = true;
+
+    // Pozitia curenta trebuie sa se fi repetat de 2 ori pana acum
+    if istoric[last] == istoric[last - 4] && istoric[last] == istoric[last - 8] {
+        ok = false;
+        // Pozitiile precedente au avut loc doar de 2 ori
+        for i in 1..4 {
+            if istoric[last - i] != istoric[last - i - 4] {
+                ok = true;
+            }
+        }
+    }
+
+    ok
+}
+
+/// TODO: testeaza
+// Verificam daca in ultimele 50 de miscari (ale fiecarui jucator) nu au fost capturate piese
+fn fifty_move(tabla: &Tabla) -> bool {
+    let istoric = &tabla.istoric;
+
+    // Trebuie sa existe minimum 100 de miscari
+    if istoric.len() < 100 {
+        return false;
+    }
+
+    let last = istoric.len() - 1;
+
+    // Pentru fiecare jucator, verificam daca in ultimele 50 de miscari au fost capturate piese
+    for i in 0..100 {
+        if istoric[last - i].contains('x') {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Verifica daca jocul mai continua. Returneaza:
+/// - `(Alb|Negru)EMat`: jocul s-a terminat, jucatorul e in mat;
+/// - `Pat`: jocul s-a terminat cu egalitate;
+/// - `Playing`: jocul continua.
+pub(crate) fn verif_continua_jocul(tabla: &Tabla, turn: Culoare) -> MatchState {
+    if !miscari::exista_miscari(tabla, turn) {
+        // Daca e sah si nu exista miscari, e mat.
+        if miscari::verif_sah(tabla, turn) {
+            if turn == Culoare::Alb {
+                return MatchState::AlbEMat;
+            }
+            return MatchState::NegruEMat;
+        }
+        return MatchState::Pat;
+    }
+
+    // Verificam cele trei conditii de egalitate
+    if verif_piese_destule(tabla) {
+        return MatchState::Pat;
+    } else if threefold(tabla) {
+        return MatchState::Pat;
+    } else if fifty_move(tabla) {
+        return MatchState::Pat;
+    }
+    MatchState::Playing
 }

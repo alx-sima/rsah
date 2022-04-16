@@ -33,11 +33,7 @@ pub(crate) fn tabla_from(template: [&str; 8]) -> Tabla {
     };
 
     // Calculeaza pozitiile atacate
-    for i in 0..8 {
-        for j in 0..8 {
-            miscari::set_influenta(&mut tabla, (i, j));
-        }
-    }
+    init_piese(&mut tabla);
 
     tabla
 }
@@ -120,11 +116,29 @@ pub(crate) fn tabla_random() -> Tabla {
     };
 
     // Calculeaza pozitiile atacate
+    init_piese(&mut tabla);
+
+    tabla
+}
+
+pub(crate) fn tabla_from_layout(layout: MatTabla) -> Tabla {
+    let mut tabla = Tabla::default();
     for i in 0..8 {
         for j in 0..8 {
-            miscari::set_influenta(&mut tabla, (i, j));
+            if let Some(piesa) = &layout[i][j].piesa {
+                tabla.mat[i][j].piesa = Some(Piesa::new(piesa.tip, piesa.culoare));
+            }
         }
     }
 
+    init_piese(&mut tabla);
     tabla
+}
+
+pub(crate) fn init_piese(tabla: &mut Tabla) {
+    for i in 0..8 {
+        for j in 0..8 {
+            miscari::set_influenta(tabla, (i, j));
+        }
+    }
 }

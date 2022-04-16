@@ -1,5 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Default)]
 pub(crate) struct Tabla {
+    /// Istoric miscari
+    pub(crate) istoric: Vec<String>,
     pub(crate) mat: MatTabla,
     pub(crate) match_state: MatchState,
     pub(crate) ultima_miscare: Option<(Pozitie, Pozitie)>,
@@ -22,18 +26,20 @@ pub(crate) type MatTabla = [[Patratel; 8]; 8];
 
 /// Un patrat de pe tabla, care poate avea o [Piesa];
 /// retine si pozitia pieselor care il ataca.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct Patratel {
     /// piesa de pe acel patrat (daca exista)
     pub(crate) piesa: Option<Piesa>,
     /// pozitiile pieselor care ataca acest patrat (indiferent de culoare)
+    #[serde(skip)]
     pub(crate) atacat: Vec<Pozitie>,
     /// piesele care, prin modificarea acestui patrat, pot fi afectate
+    #[serde(skip)]
     pub(crate) afecteaza: Vec<Pozitie>,
 }
 
 /// O piesa de sah.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Piesa {
     /// ce piesa e
     pub(crate) tip: TipPiesa,
@@ -42,8 +48,10 @@ pub(crate) struct Piesa {
     /// daca piesa a mai fost mutata
     /// (pt rocada, en passant etc.)
     /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
+    #[serde(skip)]
     pub(crate) mutat: bool,
     /// Pozitiile pe care piesa a fost inainte
+    #[serde(skip)]
     pub(crate) pozitii_anterioare: Vec<Pozitie>,
 }
 
@@ -61,7 +69,7 @@ impl Piesa {
 /// culoarea unei piese (+ a jucatorului care o detine);
 /// folosita si pentru a retine al cui este randul sa mute
 /// FIXME: :)))
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Culoare {
     /// Culoarea neagra.
     Alb,
@@ -70,7 +78,7 @@ pub(crate) enum Culoare {
 }
 
 /// Tipul unei piese.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum TipPiesa {
     Pion,
     Tura,

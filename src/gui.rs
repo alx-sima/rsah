@@ -3,14 +3,18 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
+use ggez::filesystem;
 use ggez_egui::EguiContext;
 
 use crate::{
     tabla::{
-        generare, input::get_dimensiuni_tabla, miscari::verif_sah, Culoare, MatTabla, MatchState,
-        TipPiesa,
+        game::verif_continua_jocul,
+        generare::{self, init_piese},
+        input::get_dimensiuni_tabla,
+        miscari::verif_sah,
+        Culoare, MatTabla, MatchState, Tabla, TipPiesa,
     },
-    GameState, State,
+    GameMode, GameState, State,
 };
 
 /// Randeaza home-screenul.
@@ -25,19 +29,24 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
             ui.set_height(y - 10.0);
 
             ui.vertical_centered_justified(|ui| {
-                ui.collapsing("Local", |ui| {
-                    if ui.button("Clasic").clicked() {
-                        state.turn = Culoare::Alb;
-                        state.game_state = GameState::Game;
-                        state.tabla = generare::tabla_clasica();
-                    }
+                egui::ComboBox::from_label("Aranjament piese")
+                    .selected_text(format!("{}", state.game_mode))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut state.game_mode, GameMode::Clasic, "Clasic");
+                        ui.selectable_value(&mut state.game_mode, GameMode::Aleatoriu, "Aleatoriu");
 
-                    // TODO:
-                    if ui.button("Aleator").clicked() {
-                        state.game_state = GameState::Game;
-                        state.tabla = generare::tabla_random();
-                    }
-                });
+                        for l in &state.game_layouts {
+                            ui.selectable_value(
+                                &mut state.game_mode,
+                                GameMode::Custom(l.clone()),
+                                l,
+                            );
+                        }
+                    });
+                if ui.button("Local").clicked() {
+                    state.game_state = GameState::Game;
+                    init_game(state, ctx);
+                }
 
                 // FIXME: centreaza collapsingurile
                 ui.horizontal(|ui| {
@@ -46,13 +55,12 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                         // Guestul a acceptat conexiunea
                         match listener.accept() {
                             Ok((s, _)) => {
+                                state.game_state = GameState::Multiplayer;
                                 s.set_nonblocking(true).unwrap();
                                 state.stream = Some(s);
                                 // Nu mai asteapta alte conexiuni.
                                 state.tcp_host = None;
-                                state.game_state = GameState::Multiplayer;
-                                state.tabla = generare::tabla_clasica();
-                                init_game(state);
+                                init_game(state, ctx);
                                 return;
                             }
 
@@ -70,19 +78,19 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                         }
                     } else {
                         if ui.button("Host").clicked() {
-                            let s = TcpListener::bind(state.address.clone().as_str()).unwrap();
+                            let s = TcpListener::bind(state.address.as_str()).unwrap();
                             s.set_nonblocking(true).unwrap();
                             state.tcp_host = Some(s);
                         }
                         if ui.button("Join").clicked() {
                             match TcpStream::connect(state.address.clone().as_str()) {
                                 Ok(s) => {
-                                    s.set_nonblocking(true).unwrap();
-                                    state.tabla = generare::tabla_clasica();
                                     state.game_state = GameState::Multiplayer;
+                                    s.set_nonblocking(true).unwrap();
                                     state.stream = Some(s);
                                     state.guest = true;
-                                    init_game(state);
+                                    // TODO: sa primeasca prin tcp layoutul tablei
+                                    init_game(state, ctx);
                                 }
                                 Err(e) => {
                                     println!("{}", e);
@@ -92,13 +100,11 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                     }
                 });
             });
-
             if ui.button("Editor").clicked() {
-                state.piesa_selectata_editor = TipPiesa::Pion;
-                state.piesa_sel = None;
-                init_game(state);
-                state.tabla = Default::default();
+                state.piesa_sel_editor = TipPiesa::Pion;
                 state.game_state = GameState::Editor;
+                state.miscari_disponibile = vec![];
+                state.tabla = Tabla::default();
             }
 
             if ui.button("Quit").clicked() {
@@ -108,16 +114,13 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 }
 
 /// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
-pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
+pub(crate) fn game(game_state: &mut State, gui_ctx: &EguiContext) {
     let match_state = &game_state.tabla.match_state;
     if *match_state == MatchState::Playing {
         egui::Window::new("egui-game")
             .title_bar(false)
             .fixed_pos([0.0, 0.0])
-            .show(egui_ctx, |ui| {
-                if ui.button("help").clicked() {
-                    // TODO: help text pt joc
-                }
+            .show(gui_ctx, |ui| {
                 if ui.button("back").clicked() {
                     game_state.game_state = GameState::MainMenu;
                 }
@@ -125,7 +128,7 @@ pub(crate) fn game(game_state: &mut State, egui_ctx: &EguiContext) {
     } else {
         egui::Window::new("egui-end-game")
             .title_bar(false)
-            .show(egui_ctx, |ui| {
+            .show(gui_ctx, |ui| {
                 if *match_state == MatchState::Pat {
                     ui.label("Egalitate!");
                 } else if *match_state == MatchState::AlbEMat {
@@ -154,45 +157,37 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
             ui.set_width(x - 20.0);
             ui.set_height(y - 20.0);
 
-            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Pion, "Pion");
-            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Tura, "Tura");
-            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Cal, "Cal");
-            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Nebun, "Nebun");
-            ui.radio_value(
-                &mut state.piesa_selectata_editor,
-                TipPiesa::Regina,
-                "Regina",
-            );
-            ui.radio_value(&mut state.piesa_selectata_editor, TipPiesa::Rege, "Rege");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Pion, "Pion");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Tura, "Tura");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Cal, "Cal");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Nebun, "Nebun");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Regina, "Regina");
+            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Rege, "Rege");
 
             ui.vertical_centered_justified(|ui| {
+                ui.add(egui::TextEdit::singleline(&mut state.save_name_editor));
+
                 if ui.button("save").clicked() {
-                    // Ambii regi trebuie sa existe
-                    if exista_rege(&state.tabla.mat, Culoare::Alb)
-                        && exista_rege(&state.tabla.mat, Culoare::Negru)
-                    {
-                        // Niciun rege nu trebuie sa fie in sah
-                        // facut cu github copilot, poate trebuie refacut
-                        if !verif_sah(&state.tabla, Culoare::Alb)
-                            && !verif_sah(&state.tabla, Culoare::Negru)
-                        {
-                            let mut f = std::fs::File::create("tabla.txt").unwrap();
-                            let mut s = String::new();
-                            for i in 0..8 {
-                                for j in 0..8 {
-                                    s.push_str(&format!("{:?} ", state.tabla.at((i, j))));
-                                }
-                                s.push('\n');
-                            }
-                            f.write_all(s.as_bytes()).unwrap();
-                        }
+                    init_piese(&mut state.tabla);
+
+                    if valideaza_layout(&state.tabla) {
+                        let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
+                        let mut f =
+                            filesystem::create(ctx, format!("/{}.json", state.save_name_editor))
+                                .unwrap();
+                        f.write_all(rez.as_bytes()).unwrap();
                         state.game_state = GameState::MainMenu;
+                    } else {
+                        // FIXME: sa mearga pe aceeasi idee cu muta()?
+                        for i in 0..8 {
+                            for j in 0..8 {
+                                state.tabla.mat[i][j].afecteaza = vec![];
+                                state.tabla.mat[i][j].atacat = vec![];
+                            }
+                        }
                     }
                 }
 
-                if ui.button("help").clicked() {
-                    // TODO: help text pt editor
-                }
                 if ui.button("back").clicked() {
                     state.game_state = GameState::MainMenu;
                 }
@@ -214,7 +209,28 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
     false
 }
 
-fn init_game(game_state: &mut State) {
-    game_state.miscari_disponibile = vec![];
-    game_state.turn = Culoare::Alb;
+fn init_game(state: &mut State, ctx: &ggez::Context) {
+    state.tabla = match &state.game_mode {
+        GameMode::Clasic => generare::tabla_clasica(),
+        GameMode::Aleatoriu => generare::tabla_random(),
+        GameMode::Custom(s) => {
+            let layout = crate::tabla::editor::load_file(ctx, s).unwrap();
+            generare::tabla_from_layout(layout)
+        }
+    };
+
+    state.miscari_disponibile = vec![];
+    state.turn = Culoare::Alb;
+}
+
+fn valideaza_layout(tabla: &Tabla) -> bool {
+    for culoare in [Culoare::Alb, Culoare::Negru] {
+        if !exista_rege(&tabla.mat, culoare)
+            || verif_continua_jocul(tabla, culoare) != MatchState::Playing
+            || verif_sah(tabla, culoare)
+        {
+            return false;
+        }
+    }
+    true
 }

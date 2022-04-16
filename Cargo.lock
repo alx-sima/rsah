@@ -985,9 +985,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.20.4"
+version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e808122a2e161f8181ed9e0481a982be16fd62c507553d0ce7ad20464b5d25"
+checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
 dependencies = [
  "mint",
 ]
@@ -1247,9 +1247,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.122"
+version = "0.2.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec647867e2bf0772e28c8bcde4f0d19a9216916e890543b5a03ed8ef27b8f259"
+checksum = "cb691a747a7ab48abc15c5b42066eaafde10dc427e3b6ee2a1cf43db04c763bd"
 
 [[package]]
 name = "libloading"
@@ -2141,6 +2141,8 @@ dependencies = [
  "lazy_static",
  "rand 0.3.23",
  "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

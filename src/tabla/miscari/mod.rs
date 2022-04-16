@@ -100,7 +100,7 @@ pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<Pozitie> {
     }
 }
 
-/// Verifica daca regele jucatorului *culoare* se afla in sah
+/// Verifica daca regele jucatorului `culoare` se afla in sah
 pub(crate) fn verif_sah(tabla: &Tabla, culoare: Culoare) -> bool {
     let poz_rege = get_poz_rege(&tabla.mat, culoare);
     e_atacat(tabla, poz_rege, culoare)
@@ -116,8 +116,8 @@ fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
     })
 }
 
-/// Verifica daca jucatorul *culoare* mai are miscari disponibile.
-/// IMPORTANT: functia **nu** verifica daca jucatorul este in sah.
+/// Verifica daca jucatorul `culoare` mai are miscari
+/// disponibile, fara a verifica daca jucatorul este in sah.
 pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     for i in 0..8 {
         for j in 0..8 {
