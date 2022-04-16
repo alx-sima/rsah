@@ -28,6 +28,8 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     // le sunt sterse celulele atacate si recalculate dupa mutare
     let mut pcs_to_reset = [p_old.clone().afecteaza, p_new.afecteaza].concat();
 
+    let mut mutare = notatie::encode_move(&tabla.mat, src_poz, dest_poz);
+
     // Mutare en passant (scris noaptea tarziu, nsh ce face)
     if let Some(piesa) = p_old.clone().piesa {
         if piesa.tip == TipPiesa::Pion {
@@ -40,12 +42,10 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
                 pcs_to_reset.append(&mut tabla.get(pion_luat).atacat);
 
                 tabla.get(pion_luat).piesa = None;
+                mutare += " e. p.";
             }
         }
     }
-
-    // FIXME: dc trebuie mutable?
-    let mutare = notatie::encode_move(&mut tabla.mat, src_poz, dest_poz);
 
     // Vechea pozitie a piesei nu va mai ataca
     miscari::clear_influenta(tabla, src_poz);
@@ -80,25 +80,30 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     }
 
     // Verificare pentru rocada
+    // FIXME: da pat dupa rocada
     if p_old.piesa.unwrap().tip == TipPiesa::Rege {
+        // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada
         let dist = dest_poz.1 as i32 - src_poz.1 as i32;
         if dist.abs() == 2 {
-            // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada
-            let dir = dist / 2;
-            // Cauta intai tura la distanta de rocada mica, apoi rocada mare.
-            // Merg pe incredere ca nu poti face mai multe rocade in acelasi timp
-            // si in aceeasi directie.
-            for i in [1, 2] {
-                let poz_tura = dest_poz.1 as i32 + i * dir;
-                if input::in_board(dest_poz.0 as i32, poz_tura) {
-                    if let Some(tura) = tabla.at((dest_poz.0, poz_tura as usize)).piesa.clone() {
-                        if tura.tip == TipPiesa::Tura {
-                            muta(
-                                tabla,
-                                (dest_poz.0, poz_tura as usize),
-                                (dest_poz.0, (dest_poz.1 as i32 - dir) as usize),
-                            );
-                        }
+            let poz_tura = if dist > 0 {
+                // Rocada mica
+                mutare = String::from("O-O");
+                3
+            } else {
+                // Rocada mare
+                mutare = String::from("O-O-O");
+                -4
+            };
+            let poz_tura = src_poz.1 as i32 + poz_tura;
+
+            if input::in_board(dest_poz.0 as i32, poz_tura) {
+                if let Some(tura) = tabla.at((dest_poz.0, poz_tura as usize)).piesa.clone() {
+                    if tura.tip == TipPiesa::Tura {
+                        muta(
+                            tabla,
+                            (dest_poz.0, poz_tura as usize),
+                            (dest_poz.0, (src_poz.1 + dest_poz.1) / 2),
+                        );
                     }
                 }
             }
@@ -114,17 +119,29 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
         await_move(state);
     // FIXME: rezolva clickurile
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-        // Clickul se ia in considerare doar daca este in interiorul tablei
-        if let Some((click_x, click_y)) = input::get_square_under_mouse(ctx, state.guest) {
-            player_turn(
-                &mut state.tabla,
-                &mut state.piesa_sel,
-                &mut state.miscari_disponibile,
-                &mut state.turn,
-                &mut state.stream,
-                (click_y, click_x),
-            );
+        if state.click.is_none() {
+            if let Some(pos) = input::get_mouse_square(ctx, state.guest) {
+                state.click = Some(pos);
+            }
         }
+    } else {
+        // Clickul se ia in considerare doar daca este in interiorul tablei
+        if let Some(click_start) = state.click {
+            if let Some(click_end) = input::get_mouse_square(ctx, state.guest) {
+                if click_start == click_end {
+                    player_turn(
+                        &mut state.tabla,
+                        &mut state.piesa_sel,
+                        &mut state.miscari_disponibile,
+                        &mut state.turn,
+                        &mut state.stream,
+                        (click_end.1, click_end.0),
+                    );
+                }
+                // else drag & drop??
+            }
+        }
+        state.click = None;
     }
 }
 

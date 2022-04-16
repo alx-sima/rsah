@@ -6,6 +6,7 @@ authors = [
     "Alex Sima <alexsima203@gmail.com>",
     "Baldovin Razvan <razvanmihai1337@yahoo.com>"
 ]
+description = "Un joc de sah scris in rust."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

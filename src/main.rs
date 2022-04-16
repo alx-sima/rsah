@@ -36,9 +36,11 @@ struct State {
     game_state: GameState,
     /// Ce aranjament al tablei e selectat.
     game_mode: GameMode,
+    /// Layouturile custom incarcate din fisiere.
     game_layouts: Vec<String>,
     /// Tabla de joc
     tabla: Tabla,
+    click: Option<Pozitie>,
 
     // ================================== Joc ==================================
     /// Patratele disponibile.
@@ -102,6 +104,7 @@ impl Default for State {
             tcp_host: None,
             stream: None,
             guest: false,
+            click: None,
         }
     }
 }

@@ -23,7 +23,7 @@ pub(crate) fn get_dimensiuni_tabla(ctx: &ggez::Context) -> (f32, f32, f32) {
 
 /// Returneaza coordonatele patratului unde se afla mouse-ul, sau
 /// None => mouse-ul nu se afla in tabla de sah
-pub(crate) fn get_square_under_mouse(
+pub(crate) fn get_mouse_square(
     ctx: &mut ggez::Context,
     reversed: bool,
 ) -> Option<(usize, usize)> {

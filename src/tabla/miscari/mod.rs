@@ -45,9 +45,9 @@ fn cautare_in_linie(
     rez
 }
 
-/// Returneaza o *lista de (linie, coloana)* cu toate patratele in care se poate muta piesa de la *(i, j)*
+/// Returneaza o `lista de (linie, coloana)` cu toate patratele in care se poate muta piesa de la *(i, j)*
 /// (**include piesele pe care le ataca**).
-/// Daca *tot_ce_afecteaza* e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
+/// Daca `tot_ce_afecteaza` e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
 pub(crate) fn get_miscari(tabla: &Tabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
     let (i, j) = poz;
 
@@ -64,7 +64,7 @@ pub(crate) fn get_miscari(tabla: &Tabla, poz: Pozitie, tot_ce_afecteaza: bool) -
             TipPiesa::Nebun => nebun::get(&tabla.mat, poz, tot_ce_afecteaza),
             TipPiesa::Regina => regina::get(&tabla.mat, poz, tot_ce_afecteaza),
             TipPiesa::Rege => [
-                rege::rocada(tabla, i as i32, j as i32),
+                rege::rocada(tabla, i, j),
                 rege::get(&tabla.mat, i as i32, j as i32, tot_ce_afecteaza),
             ]
             .concat(),

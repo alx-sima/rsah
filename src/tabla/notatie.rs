@@ -1,11 +1,18 @@
+use super::miscari::get_poz_rege;
+
 use super::{Culoare, MatTabla, Pozitie, TipPiesa};
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-/// Pentru mutarea de la `src` la `dest`, genereaza
-/// [**algebraic notation**](https://en.wikipedia.org/wiki/Algebraic_notation_(chess))-ul.
-pub(crate) fn encode_move(tabla: &mut MatTabla, src: Pozitie, dest: Pozitie) -> String {
+/// Expresia dupa care se decodifica o mutare.
+const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e. p.)?$";
+
+/// Genereaza [algebraic notationul][1]
+/// pentru mutarea de la `src` -> `dest`.
+///
+/// [1]: https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> String {
     let p_old = tabla[src.0][src.1].clone();
     let p_new = tabla[dest.0][dest.1].clone();
     // Adaugare miscare in istoric
@@ -31,23 +38,19 @@ pub(crate) fn encode_move(tabla: &mut MatTabla, src: Pozitie, dest: Pozitie) -> 
     }
 
     if scrie_col {
-        // Wall of shame: aduni un string cu un numar si vrei sa-ti dea un caracter
-        // Ce voiai sa faci: 'a' + 1 = 'b'
-        // Ce ai facut: 1 + "a" = "1a"
-
-        // 65 = 'a'
-        mutare += ((src.1 as u8 + 97u8) as char).to_string().as_str();
+        mutare.push((src.1 as u8 + b'a') as char);
     }
     if scrie_lin {
-        mutare += (8 - src.0).to_string().as_str();
+        mutare.push((b'8' - src.0 as u8) as char);
     }
 
     if p_new.piesa.is_some() {
         mutare += "x"
     }
 
-    mutare += ((dest.1 as u8 + 97u8) as char).to_string().as_str();
-    mutare += (8 - dest.0).to_string().as_str();
+    mutare.push((dest.1 as u8 + b'a') as char);
+    mutare.push((b'8' - dest.0 as u8) as char);
+
     mutare
 }
 
@@ -56,71 +59,83 @@ pub(crate) fn encode_move(tabla: &mut MatTabla, src: Pozitie, dest: Pozitie) -> 
 /// se deduc pozitiile de unde si pana unde a fost mutata piesa.
 /// Rezultatul va fi `Some((src_i, src_j), (dest_i, dest_j))`
 /// sau `None` (stringul nu este valid).
+/// FIXME: decodingul nu merge pt en passant.
 pub(crate) fn decode_move(
     tabla: &MatTabla,
     mov: &str,
     turn: Culoare,
 ) -> Option<(Pozitie, Pozitie)> {
     lazy_static! {
-        static ref REGX: Regex =
-            Regex::new(r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?$").unwrap();
+        static ref REGX: Regex = Regex::new(REGEXPR).unwrap();
     }
+
     // Nu trebuie parcurse capturile, pt ca regexul sigur
     // nu va returna mai multe (e intre /^/ si /$/)
-    let capture = REGX.captures_iter(mov).next().unwrap();
-    if let (Some(j), Some(i)) = (capture.get(4), capture.get(5)) {
-        // FIXME: jegos
-        let pozi = 8 - str::parse::<usize>(i.as_str()).unwrap();
-        let pozj =
-            (*j.as_str().chars().collect::<Vec<char>>().last().unwrap() as u8 - 97u8) as usize;
-        let tip_piesa = match capture.get(1) {
-            Some(x) => match x.as_str() {
-                "R" => TipPiesa::Tura,
-                "N" => TipPiesa::Cal,
-                "B" => TipPiesa::Nebun,
-                "Q" => TipPiesa::Regina,
-                "K" => TipPiesa::Rege,
-                _ => unreachable!(),
-            },
-            None => TipPiesa::Pion,
-        };
+    if let Some(capture) = REGX.captures_iter(mov).next() {
+        if let (Some(j), Some(i)) = (capture.get(4), capture.get(5)) {
+            // FIXME: jegos
+            let pozi = 8 - str::parse::<usize>(i.as_str()).unwrap();
+            let pozj = (j.as_str().chars().last().unwrap() as u8 - b'a') as usize;
 
-        let (dif_i, dif_j) = if let Some(discriminant) = capture.get(2) {
-            let d_str = discriminant.as_str();
-            if let Ok(lin) = str::parse::<usize>(d_str) {
-                (Some(8 - lin), None)
+            let tip_piesa = match capture.get(1) {
+                Some(x) => match x.as_str() {
+                    "R" => TipPiesa::Tura,
+                    "N" => TipPiesa::Cal,
+                    "B" => TipPiesa::Nebun,
+                    "Q" => TipPiesa::Regina,
+                    "K" => TipPiesa::Rege,
+                    _ => unreachable!(),
+                },
+                None => TipPiesa::Pion,
+            };
+            println!("{:?}", mov);
+
+            let (dif_i, dif_j) = if let Some(discriminant) = capture.get(2) {
+                let d_str = discriminant.as_str();
+                if let Ok(lin) = str::parse::<usize>(d_str) {
+                    (Some(8 - lin), None)
+                } else {
+                    let col = (*d_str.chars().collect::<Vec<char>>().last().unwrap() as u8 - b'a')
+                        as usize;
+                    (None, Some(col))
+                }
             } else {
-                let col =
-                    (*d_str.chars().collect::<Vec<char>>().last().unwrap() as u8 - 97u8) as usize;
-                (None, Some(col))
-            }
-        } else {
-            (None, None)
-        };
+                (None, None)
+            };
 
-        // Parcurge celulele care ataca (pozi, pozj)
-        // si cauta piesa:
-        //  - de aceeasi culoare cu jucatorul curent;
-        //  - care e de acelasi tip cu piesa mutata;
-        //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
-        for (i, j) in &tabla[pozi][pozj].afecteaza {
-            if let Some(piesa) = &tabla[*i][*j].piesa {
-                if piesa.culoare == turn && piesa.tip == tip_piesa {
-                    if let Some(dif_i) = dif_i {
-                        if *i == dif_i {
+            // Parcurge celulele care ataca (pozi, pozj)
+            // si cauta piesa:
+            //  - de aceeasi culoare cu jucatorul curent;
+            //  - care e de acelasi tip cu piesa mutata;
+            //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
+            for (i, j) in &tabla[pozi][pozj].afecteaza {
+                println!("{:?}", (i, j));
+                if let Some(piesa) = &tabla[*i][*j].piesa {
+                    if piesa.culoare == turn && piesa.tip == tip_piesa {
+                        if let Some(dif_i) = dif_i {
+                            if *i == dif_i {
+                                return Some(((*i, *j), (pozi, pozj)));
+                            }
+                        } else if let Some(dif_j) = dif_j {
+                            if *j == dif_j {
+                                return Some(((*i, *j), (pozi, pozj)));
+                            }
+                        } else {
                             return Some(((*i, *j), (pozi, pozj)));
                         }
-                    } else if let Some(dif_j) = dif_j {
-                        if *j == dif_j {
-                            return Some(((*i, *j), (pozi, pozj)));
-                        }
-                    } else {
-                        return Some(((*i, *j), (pozi, pozj)));
                     }
                 }
             }
+            return None;
         }
-        return None;
+    // rocada mica
+    } else if mov == "O-O" {
+        let (i, j) = get_poz_rege(tabla, turn);
+        return Some(((i, j), (i, j + 2)));
+    // rocada mare
+    } else if mov == "O-O-O" {
+        let (i, j) = get_poz_rege(tabla, turn);
+        return Some(((i, j), (i, (j - 2) as usize)));
     }
     None
 }
@@ -129,47 +144,46 @@ pub(crate) fn decode_move(
 mod test {
     use regex::Regex;
 
-    use crate::tabla::{generare, Culoare};
+    use crate::tabla::{Culoare, Tabla};
 
     #[test]
-    /// Verifica daca regexul recunoaste stringurile cu mutarile
+    /// Verifica daca regexul recunoaste stringurile cu mutarile.
     fn regexurile_se_potrivesc() {
         let input = ["Nexc7", "Rfh7"];
-        let re = Regex::new(r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?$").unwrap();
+        let re = Regex::new(super::REGEXPR).unwrap();
         for test in input {
             assert!(re.is_match(test));
         }
     }
 
     #[test]
+    /// Testeaza daca se decodeaza corect miscarile.
     fn decodeaza_miscari() {
         let input = [
-            (
-                "Nexc7",
-                [
-                    "N       ", "  p     ", "    N   ", "        ", "        ", "        ",
-                    "        ", "R       ",
-                ],
-            ),
-            (
-                "Rfh7",
-                [
-                    "        ", "     R  ", "       R", "        ", "        ", "        ",
-                    "        ", "        ",
-                ],
-            ),
-            (
-                "R6a7",
-                [
-                    "R       ", "        ", "R       ", "        ", "        ", "        ",
-                    "        ", "        ",
-                ],
-            ),
+            ("Nexc7", ["N", "  p", "    N", "", "", "", "", "R"]),
+            ("Rfh7", ["", "     R", "       R", "", "", "", "", ""]),
+            ("R6a7", ["R", "", "R", "", "", "", "", ""]),
         ];
 
         for (str, template) in input {
-            let tabla = generare::tabla_from(template);
+            let tabla = Tabla::from(template);
             println!("{:?}", super::decode_move(&tabla.mat, str, Culoare::Alb));
         }
+    }
+
+    #[test]
+    /// Se testeaza daca se decodeaza corect rocadele.
+    fn rocade() {
+        let template = ["R   K  R", "", "", "", "", "", "", " k"];
+        let tabla = Tabla::from(template);
+
+        assert_eq!(
+            super::decode_move(&tabla.mat, "O-O", Culoare::Alb),
+            Some(((0, 4), (0, 6)))
+        );
+        assert_eq!(
+            super::decode_move(&tabla.mat, "O-O-O", Culoare::Alb),
+            Some(((0, 4), (0, 2)))
+        );
     }
 }
