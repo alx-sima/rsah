@@ -118,15 +118,16 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 }
 
 /// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
-pub(crate) fn game(game_state: &mut State, gui_ctx: &EguiContext) {
-    let match_state = &game_state.tabla.match_state;
+pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
+    let match_state = &state.tabla.match_state;
     if *match_state == MatchState::Playing {
         egui::Window::new("egui-game")
             .title_bar(false)
             .fixed_pos([0.0, 0.0])
             .show(gui_ctx, |ui| {
                 if ui.button("back").clicked() {
-                    game_state.game_state = GameState::MainMenu;
+                    state.game_state = GameState::MainMenu;
+                    state.stream = None;
                 }
             });
     } else {
@@ -142,7 +143,7 @@ pub(crate) fn game(game_state: &mut State, gui_ctx: &EguiContext) {
                 }
 
                 if ui.button("Main Menu").clicked() {
-                    game_state.game_state = GameState::MainMenu;
+                    state.game_state = GameState::MainMenu;
                 }
             });
     }
@@ -225,6 +226,7 @@ fn init_game(state: &mut State, ctx: &ggez::Context) {
 
     state.miscari_disponibile = vec![];
     state.turn = Culoare::Alb;
+    state.piesa_sel = None;
 }
 
 fn valideaza_layout(tabla: &Tabla) -> bool {

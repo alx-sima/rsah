@@ -1,3 +1,5 @@
+use crate::tabla::input::in_board;
+
 use super::miscari::get_poz_rege;
 
 use super::{Culoare, MatTabla, Pozitie, TipPiesa};
@@ -13,25 +15,28 @@ const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e. p.)?
 ///
 /// [1]: https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
 pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> String {
-    let p_old = tabla[src.0][src.1].clone();
-    let p_new = tabla[dest.0][dest.1].clone();
-    // Adaugare miscare in istoric
-    // FIXME: scapa de unwrap
-    let mut mutare = format!("{}", p_old.clone().piesa.unwrap().tip);
+    let p_old = tabla[src.0][src.1].clone().piesa.unwrap();
+    let p_new = tabla[dest.0][dest.1].clone().piesa;
 
+    let mut mutare = format!("{}", p_old.tip);
     let mut scrie_lin = false;
     let mut scrie_col = false;
-    for k in &tabla[dest.0][dest.1].atacat {
-        // Exista o alta piesa care ataca celula destinatie...
-        if k.0 != src.0 || k.1 != src.1 {
+
+    for k in &tabla[dest.0][dest.1].afecteaza {
+        // Exista o alta piesa care poate ajunge pe celula destinatie...
+        if src != *k {
             // ... si e de acelasi tip
-            if tabla[k.0 as usize][k.1 as usize].piesa == p_old.clone().piesa {
-                // Daca sunt pe aceeasi coloana se va afisa linia
-                if k.1 == src.1 {
-                    scrie_lin = true;
-                // Daca nu, se scrie coloana, indiferent daca sunt pe aceeasi linie sau nu (se poate intampla la cai de ex.)
-                } else {
-                    scrie_col = true;
+            if let Some(piesa) = &tabla[k.0 as usize][k.1 as usize].piesa {
+                if piesa.tip == p_old.tip {
+                    // Daca sunt pe aceeasi coloana se va afisa linia
+                    println!("{:?}", k);
+                    if k.1 == src.1 {
+                        scrie_lin = true;
+                    // Daca nu, se scrie coloana, indiferent daca sunt pe
+                    // aceeasi linie sau nu (se poate intampla la cai de ex.)
+                    } else {
+                        scrie_col = true;
+                    }
                 }
             }
         }
@@ -44,7 +49,7 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> Stri
         mutare.push((b'8' - src.0 as u8) as char);
     }
 
-    if p_new.piesa.is_some() {
+    if p_new.is_some() {
         mutare += "x"
     }
 
@@ -88,7 +93,53 @@ pub(crate) fn decode_move(
                 },
                 None => TipPiesa::Pion,
             };
-            println!("{:?}", mov);
+
+            // en passant
+            if capture.get(7).is_some() {
+                if tip_piesa != TipPiesa::Pion {
+                    return None;
+                }
+                println!("{}", &mov);
+                // En passantul nu este tinut in `afecteaza`,
+                // pentru ca e doar pentru pioni,
+                // asa ca trebuie cautat separat.
+                let lin = if turn == Culoare::Alb {
+                    pozi as i32 + 1
+                } else {
+                    pozi as i32 - 1
+                };
+
+                if let Some(discriminant) = capture.get(2) {
+                    let d_str = discriminant.as_str();
+                    let col = d_str.chars().next().unwrap() as u8 - b'a';
+
+                    if in_board(lin, col as i32) {
+                        let lin = lin as usize;
+                        let col = col as usize;
+                        if let Some(piesa) = &tabla[lin][col].piesa {
+                            if piesa.tip == TipPiesa::Pion {
+                                return Some(((lin, col), (pozi, pozj)));
+                            }
+                        }
+                    }
+                }
+
+                for dir in [-1, 1] {
+                    let jpion = pozj as i32 + dir;
+                    if in_board(lin, jpion) {
+                        let lin = lin as usize;
+                        let col = jpion as usize;
+
+                        if let Some(piesa) = &tabla[lin][col].piesa {
+                            if piesa.tip == TipPiesa::Pion {
+                                return Some(((lin, col), (pozi, pozj)));
+                            }
+                        }
+                    }
+                }
+                println!("{} {}", pozi, pozj);
+                println!("{:?}", &tabla[pozi][pozj].afecteaza);
+            }
 
             let (dif_i, dif_j) = if let Some(discriminant) = capture.get(2) {
                 let d_str = discriminant.as_str();
@@ -109,7 +160,6 @@ pub(crate) fn decode_move(
             //  - care e de acelasi tip cu piesa mutata;
             //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
             for (i, j) in &tabla[pozi][pozj].afecteaza {
-                println!("{:?}", (i, j));
                 if let Some(piesa) = &tabla[*i][*j].piesa {
                     if piesa.culoare == turn && piesa.tip == tip_piesa {
                         if let Some(dif_i) = dif_i {

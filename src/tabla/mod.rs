@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// Tabla de sah + informatii despre joc.
 #[derive(Clone, Default)]
 pub(crate) struct Tabla {
     /// Istoric miscari
     pub(crate) istoric: Vec<String>,
+    /// Tabla de sah
     pub(crate) mat: MatTabla,
     pub(crate) match_state: MatchState,
+    /// Ultima miscare efectuata (daca exista)
     pub(crate) ultima_miscare: Option<(Pozitie, Pozitie)>,
 }
 

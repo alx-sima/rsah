@@ -40,6 +40,8 @@ struct State {
     game_layouts: Vec<String>,
     /// Tabla de joc
     tabla: Tabla,
+    /// Pozitia de inceput a clickului
+    /// (daca a fost initiat).
     click: Option<Pozitie>,
 
     // ================================== Joc ==================================

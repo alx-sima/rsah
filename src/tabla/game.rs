@@ -8,9 +8,9 @@ use ggez::event::MouseButton;
 use crate::{GameState, State};
 
 use super::{
-    input,
+    input::{self, in_board},
     miscari::{self, verif_sah},
-    notatie, Culoare, MatchState, Patratel, Piesa, Tabla, TipPiesa,
+    notatie, Culoare, MatchState, Patratel, Piesa, Pozitie, Tabla, TipPiesa,
 };
 
 /// Muta piesa de pe *src_poz* pe *dest_poz*,
@@ -18,37 +18,58 @@ use super::{
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
 // FIXME: face prea multe lucruri
-pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize, usize)) -> String {
+pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
     // Vechea pozitie a piesei
-    let p_old = tabla.at(src_poz).clone();
+    let p_old = tabla.at(src).clone();
+    let piesa = p_old.piesa.as_ref().unwrap();
     // Viitoarea pozitie a piesei
-    let p_new = tabla.at(dest_poz).clone();
+    let p_new = tabla.at(dest).clone();
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
-    let mut pcs_to_reset = [p_old.clone().afecteaza, p_new.afecteaza].concat();
+    let mut pcs_to_reset = [p_old.afecteaza.clone(), p_new.afecteaza.clone()].concat();
 
-    let mut mutare = notatie::encode_move(&tabla.mat, src_poz, dest_poz);
+    // Daca pionul se muta pe diagonala fara sa ia o piesa, e en passant.
+    let pion_enpassant = if piesa.tip == TipPiesa::Pion && src.1 != dest.1 && p_new.piesa.is_none()
+    {
+        let pion_luat = (src.0, dest.1);
+        tabla.get(dest).piesa = tabla.at(pion_luat).piesa.clone();
 
-    // Mutare en passant (scris noaptea tarziu, nsh ce face)
-    if let Some(piesa) = p_old.clone().piesa {
-        if piesa.tip == TipPiesa::Pion {
-            // Pionul se muta doar pe o singura linie (cand nu ataca).
-            if src_poz.1 != dest_poz.1 && p_new.piesa.is_none() {
-                let pion_luat = (src_poz.0, dest_poz.1);
-                tabla.get(dest_poz).piesa = tabla.at(pion_luat).piesa.clone();
-
-                pcs_to_reset.append(&mut tabla.get(pion_luat).afecteaza);
-                pcs_to_reset.append(&mut tabla.get(pion_luat).atacat);
-
-                tabla.get(pion_luat).piesa = None;
-                mutare += " e. p.";
+        // Pentru en passant pot exista 2 piese care sa-l faca.
+        // Ambele P uri pot lua p prin en passant.
+        //   x
+        // P p P
+        for dir in [-1, 1] {
+            let j = dest.1 as i32 + dir;
+            if in_board(src.0 as i32, j) {
+                let poz = (src.0, j as usize);
+                if let Some(piesa) = &tabla.at(poz).piesa {
+                    if piesa.tip == TipPiesa::Pion
+                        && piesa.culoare == p_old.clone().piesa.unwrap().culoare
+                    {
+                        tabla.get(dest).afecteaza.push(poz);
+                    }
+                }
             }
         }
+
+        pcs_to_reset.append(&mut tabla.get(pion_luat).afecteaza);
+        pcs_to_reset.append(&mut tabla.get(pion_luat).atacat);
+        Some(pion_luat)
+    } else {
+        None
+    };
+
+    let mut mutare = notatie::encode_move(&tabla.mat, src, dest);
+
+    if let Some(pion) = pion_enpassant {
+        // TODO: sa nu ramana miscrari reziduale.
+        tabla.get(pion).piesa = None;
+        mutare += " e. p.";
     }
 
     // Vechea pozitie a piesei nu va mai ataca
-    miscari::clear_influenta(tabla, src_poz);
+    miscari::clear_influenta(tabla, src);
 
     // Stergerea pozitiilor atacate
     for poz in &pcs_to_reset {
@@ -56,24 +77,24 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     }
 
     // Muta piesa
-    tabla.get(dest_poz).piesa = Some(Piesa {
+    tabla.get(dest).piesa = Some(Piesa {
         mutat: true,
         ..p_old.clone().piesa.unwrap()
     });
 
-    tabla.mat[src_poz.0][src_poz.1] = Patratel::default();
+    tabla.mat[src.0][src.1] = Patratel::default();
 
     // Adauga pozitia precedenta la lista istoricul *piesei*.
     tabla
-        .get(dest_poz)
+        .get(dest)
         .piesa
         .as_mut()
         .unwrap()
         .pozitii_anterioare
-        .push(src_poz);
+        .push(src);
 
     // Cauta miscarile disponibile ale piesei proaspat mutate
-    miscari::set_influenta(tabla, dest_poz);
+    miscari::set_influenta(tabla, dest);
     // Actualizeaza miscarile disponibile pentru piesele care trebuie updatate
     for (i, j) in pcs_to_reset {
         miscari::set_influenta(tabla, (i, j));
@@ -83,7 +104,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
     // FIXME: da pat dupa rocada
     if p_old.piesa.unwrap().tip == TipPiesa::Rege {
         // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada
-        let dist = dest_poz.1 as i32 - src_poz.1 as i32;
+        let dist = dest.1 as i32 - src.1 as i32;
         if dist.abs() == 2 {
             let poz_tura = if dist > 0 {
                 // Rocada mica
@@ -94,15 +115,15 @@ pub(crate) fn muta(tabla: &mut Tabla, src_poz: (usize, usize), dest_poz: (usize,
                 mutare = String::from("O-O-O");
                 -4
             };
-            let poz_tura = src_poz.1 as i32 + poz_tura;
+            let poz_tura = src.1 as i32 + poz_tura;
 
-            if input::in_board(dest_poz.0 as i32, poz_tura) {
-                if let Some(tura) = tabla.at((dest_poz.0, poz_tura as usize)).piesa.clone() {
+            if input::in_board(dest.0 as i32, poz_tura) {
+                if let Some(tura) = tabla.at((dest.0, poz_tura as usize)).piesa.clone() {
                     if tura.tip == TipPiesa::Tura {
                         muta(
                             tabla,
-                            (dest_poz.0, poz_tura as usize),
-                            (dest_poz.0, (src_poz.1 + dest_poz.1) / 2),
+                            (dest.0, poz_tura as usize),
+                            (dest.0, (src.1 + dest.1) / 2),
                         );
                     }
                 }
@@ -162,7 +183,7 @@ fn await_move(state: &mut State) {
                 Culoare::Negru => Culoare::Alb,
             };
 
-            verif_continua_jocul(&mut state.tabla, state.turn);
+            verif_continua_jocul(&state.tabla, state.turn);
         }
     }
 }
@@ -221,7 +242,8 @@ fn player_turn(
     }
 }
 
-// Verifica daca piesele ramase pot termina meciul cu mat
+/// FIXME: Doamne fereste
+/// Verifica daca piesele ramase pot termina meciul cu mat.
 fn verif_piese_destule(tabla: &Tabla) -> bool {
     let (
         mut cal_alb,
@@ -232,26 +254,25 @@ fn verif_piese_destule(tabla: &Tabla) -> bool {
         mut nebun_negru_negru,
         mut ok,
     ) = (0, 0, 0, 0, 0, 0, true);
-    // Cautam piesele ramase pe toata tabla (daca se gasesc alte piese decat cal, nebun si rege sau mai multe de acelasi fel, meciul poate fi terminat cu mat => oprim cautarea)
-    for i in 0..8 {
-        if !ok {
-            break;
-        }
+    // Cautam piesele ramase pe toata tabla.
+    // Daca se gasesc alte piese decat cal,
+    // nebun si rege sau mai multe de acelasi
+    // fel, meciul poate fi terminat cu mat.
+    'check_piese: for i in 0..8 {
         for j in 0..8 {
-            if !ok {
-                break;
-            }
             if let Some(piesa) = &tabla.at((i, j)).piesa {
                 if piesa.tip == TipPiesa::Cal {
                     if piesa.culoare == Culoare::Alb {
                         cal_alb += 1;
                         if cal_alb > 1 {
                             ok = false;
+                            break 'check_piese;
                         }
                     } else {
                         cal_negru += 1;
                         if cal_negru > 1 {
                             ok = false;
+                            break 'check_piese;
                         }
                     }
                 } else if piesa.tip == TipPiesa::Nebun {
@@ -260,28 +281,31 @@ fn verif_piese_destule(tabla: &Tabla) -> bool {
                             nebun_alb_alb += 1;
                             if nebun_alb_alb > 1 {
                                 ok = false;
+                                break 'check_piese;
                             }
                         } else {
                             nebun_alb_negru += 1;
                             if nebun_alb_negru > 1 {
                                 ok = false;
+                                break 'check_piese;
                             }
                         }
+                    } else if (i + j) % 2 == 0 {
+                        nebun_negru_alb += 1;
+                        if nebun_negru_alb > 1 {
+                            ok = false;
+                            break 'check_piese;
+                        }
                     } else {
-                        if (i + j) % 2 == 0 {
-                            nebun_negru_alb += 1;
-                            if nebun_negru_alb > 1 {
-                                ok = false;
-                            }
-                        } else {
-                            nebun_negru_negru += 1;
-                            if nebun_negru_negru > 1 {
-                                ok = false;
-                            }
+                        nebun_negru_negru += 1;
+                        if nebun_negru_negru > 1 {
+                            ok = false;
+                            break 'check_piese;
                         }
                     }
                 } else if piesa.tip != TipPiesa::Rege {
                     ok = false;
+                    break 'check_piese;
                 }
             }
         }
@@ -331,10 +355,10 @@ fn verif_piese_destule(tabla: &Tabla) -> bool {
             ok = false;
         }
     }
-    return ok;
+    ok
 }
 
-// Verificam daca aceeasi pozitie a avut loc de 3 ori consecutiv
+/// Verifica daca aceeasi pozitie a avut loc de 3 ori consecutiv.
 fn threefold(tabla: &Tabla) -> bool {
     let istoric = &tabla.istoric;
 
@@ -398,11 +422,7 @@ pub(crate) fn verif_continua_jocul(tabla: &Tabla, turn: Culoare) -> MatchState {
     }
 
     // Verificam cele trei conditii de egalitate
-    if verif_piese_destule(tabla) {
-        return MatchState::Pat;
-    } else if threefold(tabla) {
-        return MatchState::Pat;
-    } else if fifty_move(tabla) {
+    if verif_piese_destule(tabla) || threefold(tabla) || fifty_move(tabla) {
         return MatchState::Pat;
     }
     MatchState::Playing

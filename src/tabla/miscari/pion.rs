@@ -74,10 +74,8 @@ pub(super) fn ataca(tabla: &Tabla, poz: Pozitie, pe_bune: bool) -> Vec<Pozitie> 
     rez
 }
 
-/// Verifica daca piesa de la pozitia (i, j) e pion si
+/// Verifica daca piesa de la pozitia `(i, j)` e pion si
 /// **tocmai** a fost mutat 2 patratele.
-/// TODO: trebuie sa fie ultima-ultima miscare i guess, deci
-/// merge si o cautare in istoric sau macar ultima mutare.
 fn verif_en_passant(tabla: &Tabla, i: usize, j: usize) -> bool {
     if let Some((src, dest)) = &tabla.ultima_miscare {
         if i == dest.0 && j == dest.1 {

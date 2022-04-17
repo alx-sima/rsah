@@ -1,6 +1,7 @@
 use super::{miscari, Culoare, MatTabla, Piesa, Tabla, TipPiesa};
 use rand::{self, Rng};
 
+/// Generarea layouturilor tablei de sah.
 impl Tabla {
     /// Genereaza layoutul tablei de sah dupa template.
     /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
@@ -122,9 +123,9 @@ impl Tabla {
 
     pub(crate) fn from_layout(layout: MatTabla) -> Tabla {
         let mut tabla = Tabla::default();
-        for i in 0..8 {
-            for j in 0..8 {
-                if let Some(piesa) = &layout[i][j].piesa {
+        for (i, line) in layout.iter().enumerate() {
+            for (j, elem) in line.iter().enumerate() {
+                if let Some(piesa) = &elem.piesa {
                     tabla.mat[i][j].piesa = Some(Piesa::new(piesa.tip, piesa.culoare));
                 }
             }
@@ -135,7 +136,7 @@ impl Tabla {
     }
 }
 
-/// Se calculeaza pozitiile atacate/afectate de fiecare piesa.
+/// Calculeaza pozitiile atacate/afectate de fiecare piesa.
 pub(crate) fn init_piese(tabla: &mut Tabla) {
     for i in 0..8 {
         for j in 0..8 {
