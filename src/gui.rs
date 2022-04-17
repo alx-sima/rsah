@@ -1,5 +1,5 @@
 use std::{
-    io::{ErrorKind, Write},
+    io::{ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
 };
 
@@ -8,7 +8,7 @@ use ggez_egui::EguiContext;
 
 use crate::{
     tabla::{
-        game::verif_continua_jocul, generare::init_piese, input::get_dimensiuni_tabla,
+        editor, game::verif_continua_jocul, generare::init_piese, input::get_dimensiuni_tabla,
         miscari::verif_sah, Culoare, MatTabla, MatchState, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
@@ -47,7 +47,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                         });
                     if ui.button("Local").clicked() {
                         state.game_state = GameState::Game;
-                        init_game(state, ctx);
+                        load_layout(&state.game_mode, ctx).init_game(state);
                     }
 
                     ui.horizontal(|ui| {
@@ -55,13 +55,18 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                         if let Some(listener) = &state.tcp_host {
                             // Guestul a acceptat conexiunea
                             match listener.accept() {
-                                Ok((s, _)) => {
+                                Ok((mut s, _)) => {
                                     state.game_state = GameState::Multiplayer;
                                     s.set_nonblocking(true).unwrap();
-                                    state.stream = Some(s);
                                     // Nu mai asteapta alte conexiuni.
+                                    load_layout(&state.game_mode, ctx).init_game(state);
+                                    s.write_all(
+                                        serde_json::to_string(&state.tabla.mat).unwrap().as_bytes(),
+                                    )
+                                    .unwrap();
+
                                     state.tcp_host = None;
-                                    init_game(state, ctx);
+                                    state.stream = Some(s);
                                     return;
                                 }
 
@@ -69,7 +74,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                                 // inca stabilita, deci pot fi ignorate.
                                 Err(e) if e.kind() != ErrorKind::WouldBlock => {
                                     state.tcp_host = None;
-                                    println!("{}", e);
+                                    eprintln!("{}", e);
                                 }
                                 _ => {}
                             }
@@ -85,16 +90,27 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                             }
                             if ui.button("Join").clicked() {
                                 match TcpStream::connect(state.address.clone().as_str()) {
-                                    Ok(s) => {
-                                        state.game_state = GameState::Multiplayer;
-                                        s.set_nonblocking(true).unwrap();
-                                        state.stream = Some(s);
-                                        state.guest = true;
-                                        // TODO: sa primeasca prin tcp layoutul tablei
-                                        init_game(state, ctx);
+                                    Ok(mut s) => {
+                                        let mut buf = [0u8; 2048];
+                                        match s.read(&mut buf) {
+                                            Ok(len) => {
+                                                state.game_state = GameState::Multiplayer;
+                                                s.set_nonblocking(true).unwrap();
+                                                state.stream = Some(s);
+                                                state.guest = true;
+
+                                                Tabla::from_layout(
+                                                    serde_json::from_slice(&buf[..len]).unwrap(),
+                                                )
+                                                .init_game(state);
+                                            }
+                                            Err(e) => {
+                                                eprintln!("{}", e);
+                                            }
+                                        }
                                     }
                                     Err(e) => {
-                                        println!("{}", e);
+                                        eprintln!("{}", e);
                                     }
                                 };
                             }
@@ -120,6 +136,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 /// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
 pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
     let match_state = &state.tabla.match_state;
+
     if *match_state == MatchState::Playing {
         egui::Window::new("egui-game")
             .title_bar(false)
@@ -175,7 +192,7 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                 if ui.button("save").clicked() {
                     init_piese(&mut state.tabla);
 
-                    if valideaza_layout(&state.tabla) {
+                    if state.tabla.valideaza_layout() {
                         let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
                         let mut f =
                             filesystem::create(ctx, format!("/{}.json", state.save_name_editor))
@@ -214,29 +231,41 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
     false
 }
 
-fn init_game(state: &mut State, ctx: &ggez::Context) {
-    state.tabla = match &state.game_mode {
+fn load_layout(game_mode: &GameMode, ctx: &ggez::Context) -> Tabla {
+    match game_mode {
         GameMode::Clasic => Tabla::new_clasica(),
         GameMode::Aleatoriu => Tabla::new_random(),
         GameMode::Custom(s) => {
-            let layout = crate::tabla::editor::load_file(ctx, s).unwrap();
+            let layout = editor::load_file(ctx, s).unwrap();
             Tabla::from_layout(layout)
         }
-    };
-
-    state.miscari_disponibile = vec![];
-    state.turn = Culoare::Alb;
-    state.piesa_sel = None;
+    }
 }
 
-fn valideaza_layout(tabla: &Tabla) -> bool {
-    for culoare in [Culoare::Alb, Culoare::Negru] {
-        if !exista_rege(&tabla.mat, culoare)
-            || verif_continua_jocul(tabla, culoare) != MatchState::Playing
-            || verif_sah(tabla, culoare)
-        {
-            return false;
-        }
+impl Tabla {
+    /// Se initializeaza `state`ul pentru un
+    /// nou joc cu templateul specificat.
+    fn init_game(self, state: &mut State) {
+        state.tabla = self;
+        state.miscari_disponibile = vec![];
+        state.turn = Culoare::Alb;
+        state.piesa_sel = None;
     }
-    true
+
+    /// Verifica daca layoutul tablei
+    /// poate fi salvat, adica:
+    /// - niciun rege nu e in sah
+    /// - exista miscari valabile
+    /// - exista 2 regi
+    fn valideaza_layout(&self) -> bool {
+        for culoare in [Culoare::Alb, Culoare::Negru] {
+            if !exista_rege(&self.mat, culoare)
+                || verif_continua_jocul(self, culoare) != MatchState::Playing
+                || verif_sah(self, culoare)
+            {
+                return false;
+            }
+        }
+        true
+    }
 }
