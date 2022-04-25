@@ -8,11 +8,10 @@ use ggez_egui::EguiContext;
 
 use crate::{
     tabla::{
-        editor,
-        generare::init_piese,
+        editor, generare,
         input::get_dimensiuni_tabla,
         sah::{verif_continua_jocul, verif_sah},
-        Culoare, MatTabla, MatchState, Tabla, TipPiesa,
+        Culoare, MatTabla, MatchState, Piesa, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
 };
@@ -30,7 +29,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 
             ui.vertical_centered_justified(|ui| {
                 ui.group(|ui| {
-                    egui::ComboBox::from_label("Aranjament piese")
+                    egui::ComboBox::from_label("")
                         .selected_text(format!("{}", state.game_mode))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut state.game_mode, GameMode::Clasic, "Clasic");
@@ -41,11 +40,24 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                             );
 
                             for l in &state.game_layouts {
-                                ui.selectable_value(
-                                    &mut state.game_mode,
-                                    GameMode::Custom(l.clone()),
-                                    l,
-                                );
+                                if ui
+                                    .selectable_value(
+                                        &mut state.game_mode,
+                                        GameMode::Custom(l.clone()),
+                                        l,
+                                    )
+                                    .secondary_clicked()
+                                {
+                                    match ggez::filesystem::delete(ctx, l) {
+                                        Ok(_) => {
+                                            println!("{} was deleted", l);
+                                            //state.game_layouts = editor::list_files(ctx);
+                                        }
+                                        Err(e) => {
+                                            eprintln!("{}", e);
+                                        }
+                                    }
+                                }
                             }
                         });
                     if ui.button("Local").clicked() {
@@ -167,8 +179,13 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
                     {
                         // FIXME: nume full
                         if ui.button(p.to_string()).clicked() {
-                            // TODO:
-                            //state.tabla.promote(poz, *p);
+                            let culoare = state.turn.invert();
+
+                            // TODO: verifica daca da sah cand promovezi pionul
+                            // recalculeaza piesele atacate
+                            state.tabla.mat[poz.0][poz.1].piesa = Some(Piesa::new(*p, culoare));
+                            // TODO: fix
+                            //state.tabla.match_state = MatchState::Playing;
                         }
                     }
                 });
@@ -214,7 +231,11 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                 ui.add(egui::TextEdit::singleline(&mut state.save_name_editor));
 
                 if ui.button("save").clicked() {
-                    init_piese(&mut state.tabla);
+                    if state.save_name_editor.is_empty() {
+                        return;
+                    }
+
+                    generare::init_piese(&mut state.tabla);
 
                     if state.tabla.valideaza_layout() {
                         let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
@@ -223,6 +244,7 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                                 .unwrap();
                         f.write_all(rez.as_bytes()).unwrap();
                         state.game_state = GameState::MainMenu;
+                        state.game_layouts = editor::list_files(ctx);
                     } else {
                         for i in 0..8 {
                             for j in 0..8 {

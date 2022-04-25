@@ -2,32 +2,35 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::State;
 
-use super::{input::get_dimensiuni_tabla, sah::verif_sah, miscari::get_poz_rege};
+use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::verif_sah};
 
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
+    let white = graphics::Color::from_rgb(189, 114, 49);
+    let black = graphics::Color::from_rgb(102, 52, 9);
+
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
     // TODO: mesh mai scurt?
     let mesh = MeshBuilder::new()
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(0.0, 0.0, l, l),
-            graphics::Color::WHITE,
+            white,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(l, 0.0, l, l),
-            graphics::Color::BLACK,
+            black,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(0.0, l, l, l),
-            graphics::Color::BLACK,
+            black,
         )?
         .rectangle(
             graphics::DrawMode::fill(),
             graphics::Rect::new(l, l, l, l),
-            graphics::Color::WHITE,
+            white,
         )?
         .build(ctx)?;
 
@@ -59,14 +62,17 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
                 // Cat trebuie scalate piesele
                 // pentru a incapea intr-un patratel.
-                let w = l / img.width() as f32;
-                let h = l / img.height() as f32;
+                let w = l * 0.85 / img.width() as f32;
+                let h = l * 0.85 / img.height() as f32;
 
                 graphics::draw(
                     ctx,
                     &img,
                     graphics::DrawParam::default()
-                        .dest([x_ofs + j as f32 * l, y_ofs + i as f32 * l])
+                        .dest([
+                            x_ofs + j as f32 * l + 0.07 * l,
+                            y_ofs + i as f32 * l + 0.07 * l,
+                        ])
                         .scale([w, h]),
                 )?;
             }
@@ -104,12 +110,34 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     // Se coloreaza cu verde piesa selectata si
     // cu galben mutarile posibile ale acesteia.
     if let Some((x, y)) = state.piesa_sel {
-        let patrat_galben = build_square(ctx, l, graphics::Color::YELLOW)?;
-        let patrat_verde = build_square(ctx, l, graphics::Color::GREEN)?;
+        let patrat_galben = MeshBuilder::new()
+            .circle(
+                graphics::DrawMode::fill(),
+                [l / 2.0, l / 2.0],
+                l / 8.0,
+                0.01,
+                graphics::Color::from_rgba(0, 0, 0, 127),
+            )?
+            .build(ctx)?;
+        let patrat_galben_gol = MeshBuilder::new()
+            .circle(
+                graphics::DrawMode::stroke(5.0),
+                [l / 2.0, l / 2.0],
+                l / 2.0,
+                0.01,
+                graphics::Color::from_rgba(0, 0, 0, 127),
+            )?
+            .build(ctx)?;
+        let patrat_verde = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
         for (i, j) in &state.miscari_disponibile {
             let (x, y) = adjust_for_multiplayer(*j, *i, l, guest);
-            graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
+            if let Some(_) = state.tabla.at((*i, *j)).piesa {
+                // TODO: enpassant ar trebui sa intre aici
+                graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?;
+            } else {
+                graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
+            }
         }
 
         let (x, y) = adjust_for_multiplayer(y, x, l, guest);
@@ -130,7 +158,7 @@ fn adjust_for_multiplayer(x: usize, y: usize, l: f32, guest: bool) -> (f32, f32)
     }
 }
 
-/// Construieste un patrat cu culoarea si dimensiunea specificate.
+/// Construieste un patrat cu `culoarea` si dimensiunea `l` specificate.
 fn build_square(
     ctx: &mut ggez::Context,
     l: f32,

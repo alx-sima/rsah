@@ -27,9 +27,8 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> Stri
         if src != *k {
             // ... si e de acelasi tip
             if let Some(piesa) = &tabla[k.0 as usize][k.1 as usize].piesa {
-                if piesa.tip == p_old.tip {
+                if piesa.tip == p_old.tip && piesa.culoare == p_old.culoare {
                     // Daca sunt pe aceeasi coloana se va afisa linia
-                    println!("{:?}", k);
                     if k.1 == src.1 {
                         scrie_lin = true;
                     // Daca nu, se scrie coloana, indiferent daca sunt pe

@@ -82,6 +82,16 @@ pub(crate) enum Culoare {
     Negru,
 }
 
+impl Culoare {
+    pub(crate)fn invert(self) -> Culoare {
+        if self == Culoare::Alb {
+            Culoare::Negru
+        } else {
+            Culoare::Alb
+        }
+    }
+}
+
 /// Tipul unei piese.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum TipPiesa {

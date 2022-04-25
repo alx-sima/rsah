@@ -24,9 +24,9 @@ pub(crate) fn delete(tabla: &mut [[Patratel; 8]; 8], i: usize, j: usize) {
 }
 
 /// Handle pt. clickurile facute in editor:
-/// *click* => pune piesa *alba*;
-/// *click dr.* => pune piesa *neagra*;
-/// *clic mij.* => *sterge* piesa.
+///  - `click`: pune piesa *alba*;
+///  - `click dr.`: pune piesa *neagra*;
+///  - `clic mij.`: *sterge* piesa.
 pub(crate) fn editor_handler(
     ctx: &mut ggez::Context,
     tabla: &mut [[Patratel; 8]; 8],

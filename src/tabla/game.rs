@@ -138,9 +138,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
         }
     } else if piesa.tip == TipPiesa::Pion {
         let top = if culoare == Culoare::Alb { 0 } else { 7 };
-        println!("{} nigha {}", dest.0, top);
         if dest.0 == top {
-            println!("Porimimiedmienfh");
             tabla.match_state = MatchState::Promote(dest);
         }
     }
