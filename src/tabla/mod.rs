@@ -8,6 +8,8 @@ pub(crate) struct Tabla {
     /// Tabla de sah
     pub(crate) mat: MatTabla,
     pub(crate) match_state: MatchState,
+    /// Pozitiile celor 2 regi
+    pub(crate) regi: (Pozitie, Pozitie),
     /// Ultima miscare efectuata (daca exista)
     pub(crate) ultima_miscare: Option<(Pozitie, Pozitie)>,
 }
@@ -48,13 +50,13 @@ pub(crate) struct Piesa {
     pub(crate) tip: TipPiesa,
     /// Oare?
     pub(crate) culoare: Culoare,
+    #[serde(skip)]
     /// daca piesa a mai fost mutata
     /// (pt rocada, en passant etc.)
     /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
-    #[serde(skip)]
     pub(crate) mutat: bool,
-    /// Pozitiile pe care piesa a fost inainte
     #[serde(skip)]
+    /// Pozitiile pe care piesa a fost inainte
     pub(crate) pozitii_anterioare: Vec<Pozitie>,
 }
 
@@ -115,12 +117,13 @@ impl std::fmt::Display for TipPiesa {
 pub(crate) enum MatchState {
     /// Normal
     Playing,
-    /// Negru castiga
-    AlbEMat,
-    /// Alb castiga
-    NegruEMat,
+    /// Jucatorul [Culoare] e in mat (a pierdut)
+    Mat(Culoare),
     /// Egalitate
     Pat,
+    /// Pionul de la `Pozitie` este promovat, 
+    /// se selecteaza in ce piesa se transforma.
+    Promote(Pozitie),
 }
 
 impl Default for MatchState {
@@ -153,3 +156,5 @@ pub(crate) mod miscari;
 /// deducerea notatiei algebrice
 /// dintr-o miscare (sau invers)
 pub(crate) mod notatie;
+/// terminarea jocului cand e mat/pat
+pub(crate) mod sah;

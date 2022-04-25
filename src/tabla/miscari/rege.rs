@@ -1,6 +1,4 @@
-use crate::tabla::{input::in_board, MatTabla, Pozitie, Tabla, TipPiesa};
-
-use super::e_atacat;
+use crate::tabla::{input::in_board, sah::e_atacat, MatTabla, Pozitie, Tabla, TipPiesa};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
 pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Pozitie> {

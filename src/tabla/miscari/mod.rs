@@ -1,4 +1,6 @@
-use super::{game::muta, input::in_board, Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
+use super::{
+    game::muta, input::in_board, sah::verif_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
+};
 
 mod cal;
 mod nebun;
@@ -100,22 +102,6 @@ pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<Pozitie> {
     }
 }
 
-/// Verifica daca regele jucatorului `culoare` se afla in sah
-pub(crate) fn verif_sah(tabla: &Tabla, culoare: Culoare) -> bool {
-    let poz_rege = get_poz_rege(&tabla.mat, culoare);
-    e_atacat(tabla, poz_rege, culoare)
-}
-
-/// Verifica daca patratul de pe `poz` este atacat de cealalta culoare.
-fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
-    tabla.at(poz).atacat.iter().any(|x| {
-        if let Some(piesa) = tabla.at(*x).piesa.clone() {
-            return piesa.culoare != culoare;
-        }
-        unreachable!()
-    })
-}
-
 /// Verifica daca jucatorul `culoare` mai are miscari
 /// disponibile, fara a verifica daca jucatorul este in sah.
 pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
@@ -186,17 +172,10 @@ pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: Pozitie) {
 
 /// Returneaza pozitia regelui de culoare *culoare*.
 /// DEPRECATED: e doar pt ca a fost mai usor decat sa retinem pozitia regelui intr-un alt field.
-pub(crate) fn get_poz_rege(tabla: &MatTabla, culoare: Culoare) -> Pozitie {
-    // FIXME: Se poate retine pozitia fiecarui rege, din moment ce exista cate unul singur.
-    // Totusi, acest fapt este trivial si este lasat ca un exercitiu pentru cititor.
-    for (i, line) in tabla.iter().enumerate().take(8) {
-        for (j, patrat) in line.iter().enumerate().take(8) {
-            if let Some(piesa) = &patrat.piesa {
-                if piesa.tip == TipPiesa::Rege && piesa.culoare == culoare {
-                    return (i, j);
-                }
-            }
-        }
+pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> Pozitie {
+    if culoare == Culoare::Alb {
+        tabla.regi.0
+    } else {
+        tabla.regi.1
     }
-    unreachable!();
 }

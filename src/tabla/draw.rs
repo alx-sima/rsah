@@ -2,10 +2,7 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::State;
 
-use super::{
-    input::get_dimensiuni_tabla,
-    miscari::{get_poz_rege, verif_sah},
-};
+use super::{input::get_dimensiuni_tabla, sah::verif_sah, miscari::get_poz_rege};
 
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
@@ -59,13 +56,18 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
                     ctx,
                     &format!("/images/{:?}/{:?}.png", patratel.culoare, patratel.tip),
                 )?;
-                // FIXME: marimi mai ok
+
+                // Cat trebuie scalate piesele
+                // pentru a incapea intr-un patratel.
+                let w = l / img.width() as f32;
+                let h = l / img.height() as f32;
+
                 graphics::draw(
                     ctx,
                     &img,
                     graphics::DrawParam::default()
-                        .dest([x_ofs + j as f32 * l + 6.0, y_ofs + i as f32 * l + 5.0])
-                        .scale([0.5, 0.5]),
+                        .dest([x_ofs + j as f32 * l, y_ofs + i as f32 * l])
+                        .scale([w, h]),
                 )?;
             }
         }
@@ -84,8 +86,8 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     if let Some((src, dest)) = state.tabla.ultima_miscare {
         let patrat_albastru = build_square(ctx, l, graphics::Color::BLUE)?;
 
-        let (x_src, y_src) = draw_pos_multiplayer(src.1 as f32, src.0 as f32, l, guest);
-        let (x_dest, y_dest) = draw_pos_multiplayer(dest.1 as f32, dest.0 as f32, l, guest);
+        let (x_src, y_src) = adjust_for_multiplayer(src.1, src.0, l, guest);
+        let (x_dest, y_dest) = adjust_for_multiplayer(dest.1, dest.0, l, guest);
         graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_src, y_ofs + y_src],))?;
         graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_dest, y_ofs + y_dest],))?;
     }
@@ -94,8 +96,8 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     if verif_sah(&state.tabla, state.turn) {
         let patrat_rosu = build_square(ctx, l, graphics::Color::RED)?;
 
-        let (x, y) = get_poz_rege(&state.tabla.mat, state.turn);
-        let (x, y) = draw_pos_multiplayer(y as f32, x as f32, l, guest);
+        let (x, y) = get_poz_rege(&state.tabla, state.turn);
+        let (x, y) = adjust_for_multiplayer(y, x, l, guest);
         graphics::draw(ctx, &patrat_rosu, ([x_ofs + x, y_ofs + y],))?;
     }
 
@@ -106,18 +108,21 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
         let patrat_verde = build_square(ctx, l, graphics::Color::GREEN)?;
 
         for (i, j) in &state.miscari_disponibile {
-            let (x, y) = draw_pos_multiplayer(*j as f32, *i as f32, l, guest);
+            let (x, y) = adjust_for_multiplayer(*j, *i, l, guest);
             graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
         }
 
-        let (x, y) = draw_pos_multiplayer(y as f32, x as f32, l, guest);
+        let (x, y) = adjust_for_multiplayer(y, x, l, guest);
         graphics::draw(ctx, &patrat_verde, ([x_ofs + x, y_ofs + y],))?;
     }
     Ok(())
 }
 
 /// Ajusteaza coordonatele pt multiplayer (cand tabla este invers).
-fn draw_pos_multiplayer(x: f32, y: f32, l: f32, guest: bool) -> (f32, f32) {
+fn adjust_for_multiplayer(x: usize, y: usize, l: f32, guest: bool) -> (f32, f32) {
+    let x = x as f32;
+    let y = y as f32;
+
     if guest {
         ((7.0 - x) * l, (7.0 - y) * l)
     } else {

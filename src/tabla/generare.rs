@@ -9,6 +9,11 @@ impl Tabla {
     /// marcand o linie, in loc sa fie un singur string separat de '\n')
     pub(crate) fn from(template: [&str; 8]) -> Tabla {
         let mut tabla: MatTabla = Default::default();
+
+        // FIXME: se merge pe incredere ca exista un singur rege
+        let mut rege_alb = (0, 0);
+        let mut rege_negru = (0, 0);
+
         for (i, line) in template.iter().enumerate() {
             for (j, c) in line.chars().enumerate() {
                 let culoare = if c.is_lowercase() {
@@ -22,14 +27,22 @@ impl Tabla {
                     "r" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Tura, culoare)),
                     "b" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Nebun, culoare)),
                     "n" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Cal, culoare)),
-                    "k" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, culoare)),
                     "q" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Regina, culoare)),
+                    "k" => {
+                        tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, culoare));
+                        if culoare == Culoare::Alb {
+                            rege_alb = (i, j);
+                        } else {
+                            rege_negru = (i, j);
+                        }
+                    }
                     _ => tabla[i][j].piesa = None,
                 }
             }
         }
 
         let mut tabla = Tabla {
+            regi: (rege_alb, rege_negru),
             mat: tabla,
             ..Default::default()
         };
@@ -47,42 +60,6 @@ impl Tabla {
             "RNBQKBNR",
         ])
     }
-
-    /*
-    pub(crate) fn _tabla_cu_pozitii(piese: Vec<&str>) -> MatTabla {
-        let mut tabla = MatTabla::default();
-        for piesa in piese {
-            let i = piesa.chars().next().unwrap() as usize - 'a' as usize;
-            let j = piesa.chars().nth(1).unwrap() as usize - '1' as usize;
-            let tip = piesa.chars().nth(2).unwrap();
-            let culoare = if tip.is_uppercase() {
-                Culoare::Alb
-            } else {
-                Culoare::Negru
-            };
-            let tip = match tip.to_lowercase().to_string().as_str() {
-                "p" => TipPiesa::Pion,
-                "r" => TipPiesa::Tura,
-                "b" => TipPiesa::Nebun,
-                "n" => TipPiesa::Cal,
-                "k" => TipPiesa::Rege,
-                "q" => TipPiesa::Regina,
-                _ => panic!("Tipul piesei {} nu e valid", piesa),
-            };
-
-            tabla[i][j].piesa = Some(Piesa::new(tip, culoare));
-        }
-
-        // Calculeaza pozitiile atacate
-        for i in 0..8 {
-            for j in 0..8 {
-                miscari::set_influenta(&mut tabla, (i, j));
-            }
-        }
-
-        tabla
-    }
-    */
 
     /// Genereaza o tabla de joc aleatorie
     pub(crate) fn new_random() -> Tabla {
@@ -113,6 +90,7 @@ impl Tabla {
         tabla[7 - i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Alb));
 
         let mut tabla = Tabla {
+            regi: ((i, j), (7 - i, j)),
             mat: tabla,
             ..Default::default()
         };

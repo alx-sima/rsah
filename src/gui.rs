@@ -8,8 +8,11 @@ use ggez_egui::EguiContext;
 
 use crate::{
     tabla::{
-        editor, game::verif_continua_jocul, generare::init_piese, input::get_dimensiuni_tabla,
-        miscari::verif_sah, Culoare, MatTabla, MatchState, Tabla, TipPiesa,
+        editor,
+        generare::init_piese,
+        input::get_dimensiuni_tabla,
+        sah::{verif_continua_jocul, verif_sah},
+        Culoare, MatTabla, MatchState, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
 };
@@ -58,13 +61,15 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                                 Ok((mut s, _)) => {
                                     state.game_state = GameState::Multiplayer;
                                     s.set_nonblocking(true).unwrap();
-                                    // Nu mai asteapta alte conexiuni.
                                     load_layout(&state.game_mode, ctx).init_game(state);
+
+                                    // Se trimite layout-ul de joc guestului.
                                     s.write_all(
                                         serde_json::to_string(&state.tabla.mat).unwrap().as_bytes(),
                                     )
                                     .unwrap();
 
+                                    // Nu se mai asteapta alte conexiuni.
                                     state.tcp_host = None;
                                     state.stream = Some(s);
                                     return;
@@ -147,16 +152,35 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
                     state.stream = None;
                 }
             });
+    } else if let MatchState::Promote(poz) = match_state {
+        egui::Window::new("egui-promote")
+            .title_bar(false)
+            .show(gui_ctx, |ui| {
+                ui.horizontal(|ui| {
+                    for p in [
+                        TipPiesa::Tura,
+                        TipPiesa::Cal,
+                        TipPiesa::Nebun,
+                        TipPiesa::Regina,
+                    ]
+                    .iter()
+                    {
+                        // FIXME: nume full
+                        if ui.button(p.to_string()).clicked() {
+                            // TODO:
+                            //state.tabla.promote(poz, *p);
+                        }
+                    }
+                });
+            });
     } else {
         egui::Window::new("egui-end-game")
             .title_bar(false)
             .show(gui_ctx, |ui| {
                 if *match_state == MatchState::Pat {
                     ui.label("Egalitate!");
-                } else if *match_state == MatchState::AlbEMat {
-                    ui.label("Negru castiga!");
-                } else if *match_state == MatchState::NegruEMat {
-                    ui.label("Alb castiga!");
+                } else if let MatchState::Mat(loser) = match_state {
+                    ui.label(format!("{:?} este in mat!", loser).as_str());
                 }
 
                 if ui.button("Main Menu").clicked() {
@@ -200,7 +224,6 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                         f.write_all(rez.as_bytes()).unwrap();
                         state.game_state = GameState::MainMenu;
                     } else {
-                        // FIXME: sa mearga pe aceeasi idee cu muta()?
                         for i in 0..8 {
                             for j in 0..8 {
                                 state.tabla.mat[i][j].afecteaza = vec![];
@@ -260,7 +283,7 @@ impl Tabla {
     fn valideaza_layout(&self) -> bool {
         for culoare in [Culoare::Alb, Culoare::Negru] {
             if !exista_rege(&self.mat, culoare)
-                || verif_continua_jocul(self, culoare) != MatchState::Playing
+                || verif_continua_jocul(self, culoare).is_some()
                 || verif_sah(self, culoare)
             {
                 return false;

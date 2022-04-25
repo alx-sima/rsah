@@ -2,7 +2,7 @@ use crate::tabla::input::in_board;
 
 use super::miscari::get_poz_rege;
 
-use super::{Culoare, MatTabla, Pozitie, TipPiesa};
+use super::{Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -10,7 +10,7 @@ use regex::Regex;
 /// Expresia dupa care se decodifica o mutare.
 const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e. p.)?$";
 
-/// Genereaza [algebraic notationul][1]
+/// Genereaza [algebraic notation-ul][1]
 /// pentru mutarea de la `src` -> `dest`.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
@@ -65,11 +65,7 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> Stri
 /// Rezultatul va fi `Some((src_i, src_j), (dest_i, dest_j))`
 /// sau `None` (stringul nu este valid).
 /// FIXME: decodingul nu merge pt en passant.
-pub(crate) fn decode_move(
-    tabla: &MatTabla,
-    mov: &str,
-    turn: Culoare,
-) -> Option<(Pozitie, Pozitie)> {
+pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Pozitie, Pozitie)> {
     lazy_static! {
         static ref REGX: Regex = Regex::new(REGEXPR).unwrap();
     }
@@ -116,7 +112,7 @@ pub(crate) fn decode_move(
                     if in_board(lin, col as i32) {
                         let lin = lin as usize;
                         let col = col as usize;
-                        if let Some(piesa) = &tabla[lin][col].piesa {
+                        if let Some(piesa) = &tabla.at((lin, col)).piesa {
                             if piesa.tip == TipPiesa::Pion {
                                 return Some(((lin, col), (pozi, pozj)));
                             }
@@ -130,7 +126,7 @@ pub(crate) fn decode_move(
                         let lin = lin as usize;
                         let col = jpion as usize;
 
-                        if let Some(piesa) = &tabla[lin][col].piesa {
+                        if let Some(piesa) = &tabla.at((lin, col)).piesa {
                             if piesa.tip == TipPiesa::Pion {
                                 return Some(((lin, col), (pozi, pozj)));
                             }
@@ -138,7 +134,7 @@ pub(crate) fn decode_move(
                     }
                 }
                 println!("{} {}", pozi, pozj);
-                println!("{:?}", &tabla[pozi][pozj].afecteaza);
+                println!("{:?}", &tabla.at((pozi, pozj)).afecteaza);
             }
 
             let (dif_i, dif_j) = if let Some(discriminant) = capture.get(2) {
@@ -159,8 +155,8 @@ pub(crate) fn decode_move(
             //  - de aceeasi culoare cu jucatorul curent;
             //  - care e de acelasi tip cu piesa mutata;
             //  - in caz ca exista >1 piesa care se incadreaza, face diferenta (cu discriminantul).
-            for (i, j) in &tabla[pozi][pozj].afecteaza {
-                if let Some(piesa) = &tabla[*i][*j].piesa {
+            for (i, j) in &tabla.at((pozi, pozj)).afecteaza {
+                if let Some(piesa) = &tabla.at((*i, *j)).piesa {
                     if piesa.culoare == turn && piesa.tip == tip_piesa {
                         if let Some(dif_i) = dif_i {
                             if *i == dif_i {
@@ -217,7 +213,7 @@ mod test {
 
         for (str, template) in input {
             let tabla = Tabla::from(template);
-            println!("{:?}", super::decode_move(&tabla.mat, str, Culoare::Alb));
+            println!("{:?}", super::decode_move(&tabla, str, Culoare::Alb));
         }
     }
 
@@ -228,11 +224,11 @@ mod test {
         let tabla = Tabla::from(template);
 
         assert_eq!(
-            super::decode_move(&tabla.mat, "O-O", Culoare::Alb),
+            super::decode_move(&tabla, "O-O", Culoare::Alb),
             Some(((0, 4), (0, 6)))
         );
         assert_eq!(
-            super::decode_move(&tabla.mat, "O-O-O", Culoare::Alb),
+            super::decode_move(&tabla, "O-O-O", Culoare::Alb),
             Some(((0, 4), (0, 2)))
         );
     }
