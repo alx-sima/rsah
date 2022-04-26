@@ -7,7 +7,7 @@ use super::{miscari, Culoare, MatchState, Pozitie, Tabla, TipPiesa};
 pub(crate) fn verif_continua_jocul(tabla: &Tabla, turn: Culoare) -> Option<MatchState> {
     if !miscari::exista_miscari(tabla, turn) {
         // Daca e sah si nu exista miscari, e mat.
-        if verif_sah(tabla, turn) {
+        if e_in_sah(tabla, turn) {
             return Some(MatchState::Mat(turn));
         }
         return Some(MatchState::Pat);
@@ -22,7 +22,7 @@ pub(crate) fn verif_continua_jocul(tabla: &Tabla, turn: Culoare) -> Option<Match
 }
 
 /// Verifica daca regele jucatorului `culoare` se afla in sah
-pub(crate) fn verif_sah(tabla: &Tabla, culoare: Culoare) -> bool {
+pub(crate) fn e_in_sah(tabla: &Tabla, culoare: Culoare) -> bool {
     let poz_rege = miscari::get_poz_rege(tabla, culoare);
     e_atacat(tabla, poz_rege, culoare)
 }

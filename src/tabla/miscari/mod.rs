@@ -1,7 +1,7 @@
 use crate::{Mutare, TipMutare};
 
 use super::{
-    game::muta, input::in_board, sah::verif_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
+    game::muta, input::in_board, sah::e_in_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
 };
 
 mod cal;
@@ -143,7 +143,7 @@ pub(crate) fn nu_provoaca_sah(
         // "Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah"
         let mut backup = tabla.clone();
         muta(&mut backup, piesa, &mutare);
-        if !verif_sah(&backup, culoare) {
+        if !e_in_sah(&backup, culoare) {
             rez.push(mutare);
         }
     }

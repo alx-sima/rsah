@@ -5,9 +5,8 @@ use ggez::event::MouseButton;
 use crate::{GameState, Mutare, State, TipMutare};
 
 use super::{
-    input,
-    miscari, notatie,
-    sah::{self, verif_sah},
+    input, miscari, notatie,
+    sah::{self, e_in_sah},
     Culoare, MatchState, Patratel, Piesa, Pozitie, Tabla, TipPiesa,
 };
 
@@ -80,7 +79,6 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
         };
 
         // Verificare pentru rocada.
-        // FIXME: da pat dupa rocada
         if let TipMutare::Rocada(tura) = mutare.tip {
             // Directia in care se face rocada
             if tura.1 > src.1 {
@@ -139,8 +137,12 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
 fn await_move(state: &mut State) {
     let mut tcp_buffer = [0; 16];
     if let Ok(len) = state.stream.as_ref().unwrap().read(&mut tcp_buffer) {
-        let msg = std::str::from_utf8(&tcp_buffer[..len]).unwrap();
-        if let Some((src, mutare)) = notatie::decode_move(&state.tabla, msg, state.turn) {
+        let notatie = std::str::from_utf8(&tcp_buffer[..len]).unwrap();
+
+        if let Some((src, mutare)) = notatie::decode_move(&state.tabla, notatie, state.turn) {
+            // Mutarea este adaugata in istoric
+            state.tabla.istoric.push(notatie.to_string());
+
             // FIXME:
             muta(&mut state.tabla, src, &mutare);
             state.tabla.ultima_miscare = Some((src, mutare.dest));
@@ -185,7 +187,7 @@ fn player_turn(
 
             if let MatchState::Mat(_) = state.tabla.match_state {
                 mov += "#";
-            } else if verif_sah(&state.tabla, state.turn) {
+            } else if e_in_sah(&state.tabla, state.turn) {
                 mov += "+";
             }
 

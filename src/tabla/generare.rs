@@ -10,10 +10,6 @@ impl Tabla {
     pub(crate) fn from(template: [&str; 8]) -> Tabla {
         let mut tabla: MatTabla = Default::default();
 
-        // FIXME: se merge pe incredere ca exista un singur rege
-        let mut rege_alb = (0, 0);
-        let mut rege_negru = (0, 0);
-
         for (i, line) in template.iter().enumerate() {
             for (j, c) in line.chars().enumerate() {
                 let culoare = if c.is_lowercase() {
@@ -28,29 +24,13 @@ impl Tabla {
                     "b" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Nebun, culoare)),
                     "n" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Cal, culoare)),
                     "q" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Regina, culoare)),
-                    "k" => {
-                        tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, culoare));
-                        if culoare == Culoare::Alb {
-                            rege_alb = (i, j);
-                        } else {
-                            rege_negru = (i, j);
-                        }
-                    }
+                    "k" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, culoare)),
                     _ => tabla[i][j].piesa = None,
                 }
             }
         }
 
-        let mut tabla = Tabla {
-            regi: (rege_alb, rege_negru),
-            mat: tabla,
-            ..Default::default()
-        };
-
-        // Calculeaza pozitiile atacate
-        init_piese(&mut tabla);
-
-        tabla
+        Tabla::from_layout(tabla)
     }
 
     /// Genereaza o tabla de sah clasica.
@@ -89,36 +69,56 @@ impl Tabla {
         tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Negru));
         tabla[7 - i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Alb));
 
+        Tabla::from_layout(tabla)
+    }
+
+    /// Genereaza o [Tabla] initializata dintr-o [MatTabla].
+    pub(crate) fn from_layout(layout: MatTabla) -> Tabla {
+        // Wall of shame: copiez o matrice intr-alta cu 2 foruri
+        /*
+        for (i, line) in layout.iter().enumerate() {
+            for (j, elem) in line.iter().enumerate() {
+                if let Some(piesa) = &elem.piesa {
+                    mat[i][j].piesa = Some(Piesa::new(piesa.tip, piesa.culoare));
+                    if piesa.tip == TipPiesa::Rege {
+                        if piesa.culoare == Culoare::Alb {
+                            regi.0 = (i, j);
+                        } else {
+                            regi.1 = (i, j);
+                        }
+                    }
+                }
+            }
+        }
+        */
+
         let mut tabla = Tabla {
-            regi: ((i, j), (7 - i, j)),
-            mat: tabla,
+            mat: layout,
             ..Default::default()
         };
 
         init_piese(&mut tabla);
         tabla
     }
-
-    pub(crate) fn from_layout(layout: MatTabla) -> Tabla {
-        let mut tabla = Tabla::default();
-        for (i, line) in layout.iter().enumerate() {
-            for (j, elem) in line.iter().enumerate() {
-                if let Some(piesa) = &elem.piesa {
-                    tabla.mat[i][j].piesa = Some(Piesa::new(piesa.tip, piesa.culoare));
-                }
-            }
-        }
-
-        init_piese(&mut tabla);
-        tabla
-    }
 }
 
-/// Calculeaza pozitiile atacate/afectate de fiecare piesa.
+/// Calculeaza pozitiile atacate/afectate de
+/// fiecare piesa si retine pozitiile regilor.
 pub(crate) fn init_piese(tabla: &mut Tabla) {
     for i in 0..8 {
         for j in 0..8 {
             miscari::set_influenta(tabla, (i, j));
+
+            // Retine pozitiile regilor (se considera ca exista doar 2).
+            if let Some(piesa) = &tabla.get((i, j)).piesa {
+                if piesa.tip == TipPiesa::Rege {
+                    if piesa.culoare == Culoare::Alb {
+                        tabla.regi.0 = (i, j);
+                    } else {
+                        tabla.regi.1 = (i, j);
+                    }
+                }
+            }
         }
     }
 }

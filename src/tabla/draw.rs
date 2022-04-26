@@ -2,7 +2,7 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::{State, TipMutare};
 
-use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::verif_sah};
+use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::e_in_sah};
 
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
@@ -99,7 +99,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     }
 
     // Se coloreaza cu rosu regele, daca e in sah.
-    if verif_sah(&state.tabla, state.turn) {
+    if e_in_sah(&state.tabla, state.turn) {
         let patrat_rosu = build_square(ctx, l, graphics::Color::from_rgba(255, 0, 0, 170))?;
 
         let (x, y) = get_poz_rege(&state.tabla, state.turn);

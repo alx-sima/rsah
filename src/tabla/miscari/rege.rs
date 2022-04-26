@@ -38,8 +38,16 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
     rez
 }
 
-// FIXME: verifica daca dupa rocada se intampla ceva nasty, gen sah
 /// Se cauta pozitiile unde, daca este mutat regele, se face rocada.
+///
+/// Rocada se poate face doar daca:
+///  - nici tura, nici regele nu au fost mutate
+///  - nu se trece prin alte piese
+///  - nu se trece prin sah
+///  - tura este la *4 patratele la stanga* (rocada mare),
+/// sau *3 la dreapta* (rocada mica) de rege. 
+/// Nu conteaza pozitia efectiva, ci doar distanta,
+///  pt. a se putea face rocada si pe layouturi random sau custom.
 pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {
     let mut rez = vec![];
     let rege = tabla.at((i, j)).piesa.clone().unwrap();

@@ -73,21 +73,34 @@ struct State {
 
 #[derive(Clone, Debug)]
 struct Mutare {
+    /// Pozitia pe care va ajunge piesa mutata.
     dest: Pozitie,
+    /// In ce consta mutarea.
     tip: TipMutare,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum TipMutare {
+    /// Mutare normala.
     Normal,
+    /// O piesa este capturata.
     Captura,
+    /// Miscarea presupune un en passant.
+    /// Se retine pozitia **efectiva** a
+    /// pionului care va fi capturat,
+    /// nu destinatia, aceea va fi in `Mutare.dest`.
     EnPassant(Pozitie),
+    /// Miscarea presupune o rocada.
+    /// Se retine pozitia turei care participa.
     Rocada(Pozitie),
 }
 
 #[derive(PartialEq)]
 enum GameMode {
+    /// Aranjamentul standard.
     Clasic,
+    /// Piese generate aleatoriu
+    /// cu generare::new_random().
     Aleatoriu,
     Custom(String),
 }
@@ -106,8 +119,8 @@ impl Default for State {
     /// Valorile initiale ale variabilelor globale.
     fn default() -> Self {
         State {
+            ed_save_name: String::from("custom_layout"),
             address: String::from("127.0.0.1:8080"),
-            ed_save_name: String::from("save"),
             egui_backend: EguiBackend::default(),
             piesa_sel_editor: TipPiesa::Pion,
             game_state: GameState::MainMenu,
@@ -132,7 +145,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
 
         match self.game_state {
             GameState::Game | GameState::Multiplayer => {
-                gui::game(self, &egui_ctx);
+                gui::game(self, &egui_ctx, ctx);
 
                 tabla::game::turn_handler(ctx, self);
             }
@@ -164,6 +177,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         graphics::present(ctx)
     }
 
+    // =========================================================================
     // ======================= Layere de compatibilitate =======================
 
     /// Updateaza rezolutia logica a ecranului cand se schimba cea fizica,
@@ -212,7 +226,7 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     }
 }
 
-/// Configureaza aplicatia inainte de a o rula
+/// Se configureaza aplicatia inainte de a o rula
 fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
     let setup = conf::WindowSetup::default()
         .title("Chess")

@@ -10,7 +10,7 @@ use crate::{
     tabla::{
         editor, generare,
         input::get_dimensiuni_tabla,
-        sah::{verif_continua_jocul, verif_sah},
+        sah::{e_in_sah, verif_continua_jocul},
         Culoare, MatTabla, MatchState, Piesa, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
@@ -158,19 +158,28 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 }
 
 /// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
-pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
+pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context) {
     let match_state = &state.tabla.match_state;
 
     if *match_state == MatchState::Playing {
-        egui::Window::new("egui-game")
-            .title_bar(false)
-            .fixed_pos([0.0, 0.0])
-            .show(gui_ctx, |ui| {
-                if ui.button("back").clicked() {
-                    state.game_state = GameState::MainMenu;
-                    state.stream = None;
+        egui::SidePanel::left("egui-game").show(gui_ctx, |ui| {
+            let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
+            let (_, y) = ggez::graphics::drawable_size(ctx);
+            ui.set_width(x_pad - 20.0);
+            ui.set_height(y - 20.0);
+
+            if ui.button("back").clicked() {
+                state.game_state = GameState::MainMenu;
+                state.stream = None;
+            }
+            // afiseaza ultimele 10 miscari
+            ui.group(|ui| {
+                ui.label("istoric:");
+                for i in state.tabla.istoric.iter().rev().take(10) {
+                    ui.label(i);
                 }
             });
+        });
     } else if let MatchState::Promote(poz) = match_state {
         egui::Window::new("egui-promote")
             .title_bar(false)
@@ -218,8 +227,6 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
 /// Randeaza meniul din editor.
 pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
     egui::SidePanel::left("egui-editor").show(egui_ctx, |ui| {
-        // FIXME: sa functioneze pe toate rezolutiile
-        // Umple toata marginea din stanga
         let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
         let (_, y) = ggez::graphics::drawable_size(ctx);
         ui.set_width(x_pad - 20.0);
@@ -242,6 +249,7 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
             let save_button = ui.button("save");
             if save_button.clicked() {
                 if state.ed_save_name.is_empty() {
+                    println!("numele e invalid");
                     return;
                 }
 
@@ -318,7 +326,7 @@ impl Tabla {
         for culoare in [Culoare::Alb, Culoare::Negru] {
             if !exista_rege(&self.mat, culoare)
                 || verif_continua_jocul(self, culoare).is_some()
-                || verif_sah(self, culoare)
+                || e_in_sah(self, culoare)
             {
                 return false;
             }
