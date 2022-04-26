@@ -71,13 +71,13 @@ struct State {
     guest: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Mutare {
     dest: Pozitie,
     tip: TipMutare,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum TipMutare {
     Normal,
     Captura,

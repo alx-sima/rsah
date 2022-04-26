@@ -2,10 +2,10 @@ use std::io::{Read, Write};
 
 use ggez::event::MouseButton;
 
-use crate::{GameState, State};
+use crate::{GameState, Mutare, State, TipMutare};
 
 use super::{
-    input::{self, in_board},
+    input,
     miscari, notatie,
     sah::{self, verif_sah},
     Culoare, MatchState, Patratel, Piesa, Pozitie, Tabla, TipPiesa,
@@ -16,54 +16,28 @@ use super::{
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
 // FIXME: face prea multe lucruri
-pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
+pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla.at(src).clone();
     let piesa = p_old.piesa.clone().unwrap();
     let culoare = piesa.culoare;
     // Viitoarea pozitie a piesei
-    let p_new = tabla.at(dest).clone();
+    let p_new = tabla.at(mutare.dest).clone();
 
     // Tuturor pieselor care ataca vechea sau noua pozitie
     // le sunt sterse celulele atacate si recalculate dupa mutare
-    let mut pcs_to_reset = [p_old.afecteaza, p_new.afecteaza.clone()].concat();
+    let pcs_to_reset = [p_old.afecteaza, p_new.afecteaza].concat();
 
     // Daca pionul se muta pe diagonala fara sa ia o piesa, e en passant.
-    let pion_enpassant = if piesa.tip == TipPiesa::Pion && src.1 != dest.1 && p_new.piesa.is_none()
-    {
-        let pion_luat = (src.0, dest.1);
-        tabla.get(dest).piesa = tabla.at(pion_luat).piesa.clone();
+    if piesa.tip == TipPiesa::Pion {
+        if let TipMutare::EnPassant(victima) = mutare.tip {
+            tabla.get(mutare.dest).piesa = tabla.at(victima).piesa.clone();
 
-        // Pentru en passant pot exista 2 piese care sa-l faca.
-        // Ambele P uri pot lua p prin en passant.
-        //   x
-        // P p P
-        for dir in [-1, 1] {
-            let j = dest.1 as i32 + dir;
-            if in_board(src.0 as i32, j) {
-                let poz = (src.0, j as usize);
-                if let Some(piesa) = &tabla.at(poz).piesa {
-                    if piesa.tip == TipPiesa::Pion && piesa.culoare == culoare {
-                        tabla.get(dest).afecteaza.push(poz);
-                    }
-                }
-            }
+            tabla.mat[victima.0][victima.1].piesa = None;
         }
-
-        pcs_to_reset.append(&mut tabla.get(pion_luat).afecteaza);
-        pcs_to_reset.append(&mut tabla.get(pion_luat).atacat);
-        Some(pion_luat)
-    } else {
-        None
-    };
-
-    let mut mutare = notatie::encode_move(&tabla.mat, src, dest);
-
-    if let Some(pion) = pion_enpassant {
-        // TODO: sa nu ramana miscrari reziduale.
-        tabla.get(pion).piesa = None;
-        mutare += " e. p.";
     }
+
+    let mut notatie = notatie::encode_move(&tabla.mat, src, mutare);
 
     // Vechea pozitie a piesei nu va mai ataca
     miscari::clear_influenta(tabla, src);
@@ -74,16 +48,16 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
     }
 
     // Muta piesa
-    tabla.get(dest).piesa = Some(Piesa {
+    tabla.get(mutare.dest).piesa = Some(Piesa {
         mutat: true,
         ..piesa
     });
 
     tabla.mat[src.0][src.1] = Patratel::default();
 
-    // Adauga pozitia precedenta la lista istoricul *piesei*.
+    // Adauga pozitia precedenta la lista istoricul `piesei`.
     tabla
-        .get(dest)
+        .get(mutare.dest)
         .piesa
         .as_mut()
         .unwrap()
@@ -91,7 +65,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
         .push(src);
 
     // Cauta miscarile disponibile ale piesei proaspat mutate
-    miscari::set_influenta(tabla, dest);
+    miscari::set_influenta(tabla, mutare.dest);
     // Actualizeaza miscarile disponibile pentru piesele care trebuie updatate
     for (i, j) in pcs_to_reset {
         miscari::set_influenta(tabla, (i, j));
@@ -100,47 +74,40 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, dest: Pozitie) -> String {
     if piesa.tip == TipPiesa::Rege {
         // Se updateaza pozitia regelui din `tabla.regi`.
         if culoare == Culoare::Alb {
-            tabla.regi.0 = dest;
+            tabla.regi.0 = mutare.dest;
         } else {
-            tabla.regi.1 = dest;
+            tabla.regi.1 = mutare.dest;
         };
 
-        // Verificare pentru rocada
+        // Verificare pentru rocada.
         // FIXME: da pat dupa rocada
-        // Daca regele a fost mutat 2 patratele, ori e hacker, ori face rocada.
-        let dist = dest.1 as i32 - src.1 as i32;
-        if dist.abs() == 2 {
-            let poz_tura = if dist > 0 {
+        if let TipMutare::Rocada(tura) = mutare.tip {
+            // Directia in care se face rocada
+            if tura.1 > src.1 {
                 // Rocada mica
-                mutare = String::from("O-O");
-                3
+                notatie = String::from("O-O");
             } else {
                 // Rocada mare
-                mutare = String::from("O-O-O");
-                -4
-            };
-            let poz_tura = src.1 as i32 + poz_tura;
-
-            if input::in_board(dest.0 as i32, poz_tura) {
-                if let Some(tura) = tabla.at((dest.0, poz_tura as usize)).piesa.clone() {
-                    if tura.tip == TipPiesa::Tura {
-                        muta(
-                            tabla,
-                            (dest.0, poz_tura as usize),
-                            (dest.0, (src.1 + dest.1) / 2),
-                        );
-                    }
-                }
+                notatie = String::from("O-O-O");
             }
+
+            muta(
+                tabla,
+                tura,
+                &Mutare {
+                    tip: TipMutare::Normal,
+                    dest: (src.0, (src.1 + mutare.dest.1) / 2),
+                },
+            );
         }
     } else if piesa.tip == TipPiesa::Pion {
         let top = if culoare == Culoare::Alb { 0 } else { 7 };
-        if dest.0 == top {
-            tabla.match_state = MatchState::Promote(dest);
+        if mutare.dest.0 == top {
+            tabla.match_state = MatchState::Promote(mutare.dest);
         }
     }
 
-    mutare
+    notatie
 }
 
 pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
@@ -173,10 +140,10 @@ fn await_move(state: &mut State) {
     let mut tcp_buffer = [0; 16];
     if let Ok(len) = state.stream.as_ref().unwrap().read(&mut tcp_buffer) {
         let msg = std::str::from_utf8(&tcp_buffer[..len]).unwrap();
-        if let Some((src_poz, dest_poz)) = notatie::decode_move(&state.tabla, msg, state.turn) {
-            // FIXME: CRED ca nu se actualizeaza celulele atacate de pioni
-            muta(&mut state.tabla, src_poz, dest_poz);
-            state.tabla.ultima_miscare = Some((src_poz, dest_poz));
+        if let Some((src, mutare)) = notatie::decode_move(&state.tabla, msg, state.turn) {
+            // FIXME:
+            muta(&mut state.tabla, src, &mutare);
+            state.tabla.ultima_miscare = Some((src, mutare.dest));
 
             // Randul urmatorului jucator
             // Schimba turn din alb in negru si din negru in alb
@@ -204,9 +171,9 @@ fn player_turn(
     // Daca exista o piesa selectata...
     if let Some(src) = state.piesa_sel {
         // Daca miscarea este valida, efectueaza mutarea
-        if state.miscari_disponibile.iter().any(|x| x.dest == click) {
-            let mut mov = muta(&mut state.tabla, src, click);
-            state.tabla.ultima_miscare = Some((src, click));
+        if let Some(mutare) = state.miscari_disponibile.iter().find(|x| x.dest == click) {
+            let mut mov = muta(&mut state.tabla, src, mutare);
+            state.tabla.ultima_miscare = Some((src, mutare.dest));
 
             // Randul urmatorului jucator
             // Schimba turn din alb in negru si din negru in alb

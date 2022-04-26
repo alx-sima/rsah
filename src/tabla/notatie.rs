@@ -1,4 +1,5 @@
-use crate::tabla::input::in_board;
+use crate::TipMutare;
+use crate::{tabla::input::in_board, Mutare};
 
 use super::miscari::get_poz_rege;
 
@@ -14,15 +15,15 @@ const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e. p.)?
 /// pentru mutarea de la `src` -> `dest`.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
-pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> String {
+pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: &Mutare) -> String {
     let p_old = tabla[src.0][src.1].clone().piesa.unwrap();
-    let p_new = tabla[dest.0][dest.1].clone().piesa;
+    let p_new = tabla[dest.dest.0][dest.dest.1].clone().piesa;
 
     let mut mutare = format!("{}", p_old.tip);
     let mut scrie_lin = false;
     let mut scrie_col = false;
 
-    for k in &tabla[dest.0][dest.1].afecteaza {
+    for k in &tabla[dest.dest.0][dest.dest.1].afecteaza {
         // Exista o alta piesa care poate ajunge pe celula destinatie...
         if src != *k {
             // ... si e de acelasi tip
@@ -52,8 +53,12 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> Stri
         mutare += "x"
     }
 
-    mutare.push((dest.1 as u8 + b'a') as char);
-    mutare.push((b'8' - dest.0 as u8) as char);
+    mutare.push((dest.dest.1 as u8 + b'a') as char);
+    mutare.push((b'8' - dest.dest.0 as u8) as char);
+
+    if let TipMutare::EnPassant(_) = dest.tip {
+        mutare += " e.p.";
+    }
 
     mutare
 }
@@ -61,10 +66,12 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, dest: Pozitie) -> Stri
 /// Inversul operatiei [encode_move]:
 /// Din stringul `mov` si pozitiile pieselor de pe `tabla`,
 /// se deduc pozitiile de unde si pana unde a fost mutata piesa.
-/// Rezultatul va fi `Some((src_i, src_j), (dest_i, dest_j))`
+///
+/// Rezultatul va fi `Some(poz_piesa, mutare)`
 /// sau `None` (stringul nu este valid).
+///
 /// FIXME: decodingul nu merge pt en passant.
-pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Pozitie, Pozitie)> {
+pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Pozitie, Mutare)> {
     lazy_static! {
         static ref REGX: Regex = Regex::new(REGEXPR).unwrap();
     }
@@ -111,9 +118,17 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                     if in_board(lin, col as i32) {
                         let lin = lin as usize;
                         let col = col as usize;
+
                         if let Some(piesa) = &tabla.at((lin, col)).piesa {
                             if piesa.tip == TipPiesa::Pion {
-                                return Some(((lin, col), (pozi, pozj)));
+                                return Some((
+                                    (lin, col),
+                                    Mutare {
+                                        // FIXME:
+                                        tip: TipMutare::EnPassant((0, 0)),
+                                        dest: (pozi, pozj),
+                                    },
+                                ));
                             }
                         }
                     }
@@ -127,7 +142,14 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
 
                         if let Some(piesa) = &tabla.at((lin, col)).piesa {
                             if piesa.tip == TipPiesa::Pion {
-                                return Some(((lin, col), (pozi, pozj)));
+                                return Some((
+                                    (lin, col),
+                                    Mutare {
+                                        // FIXME:
+                                        tip: TipMutare::Normal,
+                                        dest: (pozi, pozj),
+                                    },
+                                ));
                             }
                         }
                     }
@@ -159,14 +181,32 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                     if piesa.culoare == turn && piesa.tip == tip_piesa {
                         if let Some(dif_i) = dif_i {
                             if *i == dif_i {
-                                return Some(((*i, *j), (pozi, pozj)));
+                                return Some((
+                                    (*i, *j),
+                                    Mutare {
+                                        tip: TipMutare::Normal,
+                                        dest: (pozi, pozj),
+                                    },
+                                ));
                             }
                         } else if let Some(dif_j) = dif_j {
                             if *j == dif_j {
-                                return Some(((*i, *j), (pozi, pozj)));
+                                return Some((
+                                    (*i, *j),
+                                    Mutare {
+                                        tip: TipMutare::Normal,
+                                        dest: (pozi, pozj),
+                                    },
+                                ));
                             }
                         } else {
-                            return Some(((*i, *j), (pozi, pozj)));
+                            return Some((
+                                (*i, *j),
+                                Mutare {
+                                    tip: TipMutare::Normal,
+                                    dest: (pozi, pozj),
+                                },
+                            ));
                         }
                     }
                 }
@@ -176,11 +216,25 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
     // rocada mica
     } else if mov == "O-O" {
         let (i, j) = get_poz_rege(tabla, turn);
-        return Some(((i, j), (i, j + 2)));
+        return Some((
+            (i, j),
+            Mutare {
+                // FIXME:
+                tip: TipMutare::Rocada((0, 0)),
+                dest: (i, j + 2),
+            },
+        ));
     // rocada mare
     } else if mov == "O-O-O" {
         let (i, j) = get_poz_rege(tabla, turn);
-        return Some(((i, j), (i, (j - 2) as usize)));
+        return Some((
+            (i, j),
+            Mutare {
+                // FIXME:
+                tip: TipMutare::Rocada((0, 0)),
+                dest: (i, j - 2),
+            },
+        ));
     }
     None
 }
@@ -219,9 +273,11 @@ mod test {
     #[test]
     /// Se testeaza daca se decodeaza corect rocadele.
     fn rocade() {
-        let template = ["R   K  R", "", "", "", "", "", "", " k"];
-        let tabla = Tabla::from(template);
+        todo!();
+        //let template = ["R   K  R", "", "", "", "", "", "", " k"];
+        //let tabla = Tabla::from(template);
 
+        /*
         assert_eq!(
             super::decode_move(&tabla, "O-O", Culoare::Alb),
             Some(((0, 4), (0, 6)))
@@ -230,5 +286,6 @@ mod test {
             super::decode_move(&tabla, "O-O-O", Culoare::Alb),
             Some(((0, 4), (0, 2)))
         );
+        */
     }
 }

@@ -142,7 +142,7 @@ pub(crate) fn nu_provoaca_sah(
     for mutare in miscari {
         // "Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah"
         let mut backup = tabla.clone();
-        muta(&mut backup, piesa, mutare.dest);
+        muta(&mut backup, piesa, &mutare);
         if !verif_sah(&backup, culoare) {
             rez.push(mutare);
         }

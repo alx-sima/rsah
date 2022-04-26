@@ -188,11 +188,12 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
                         if ui.button(p.to_string()).clicked() {
                             let culoare = state.turn.invert();
 
+                            //let tabla = &mut state.tabla;
                             // TODO: verifica daca da sah cand promovezi pionul
                             // recalculeaza piesele atacate
                             state.tabla.mat[poz.0][poz.1].piesa = Some(Piesa::new(*p, culoare));
                             // TODO: fix
-                            //state.tabla.match_state = MatchState::Playing;
+                            //tabla.match_state = MatchState::Playing;
                         }
                     }
                 });
@@ -248,10 +249,14 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
 
                 if state.tabla.valideaza_layout() {
                     let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
-                    let mut f =
-                        filesystem::create(ctx, format!("/{}.json", state.ed_save_name)).unwrap();
+
+                    let path = format!("/{}.json", state.ed_save_name);
+
+                    let mut f = filesystem::create(ctx, path.clone()).unwrap();
                     f.write_all(rez.as_bytes()).unwrap();
+
                     state.game_state = GameState::MainMenu;
+                    state.game_mode = GameMode::Custom(path);
                 } else {
                     for i in 0..8 {
                         for j in 0..8 {

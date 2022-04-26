@@ -90,7 +90,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
     // Se coloreaza cu albastru ultima miscare
     if let Some((src, dest)) = state.tabla.ultima_miscare {
-        let patrat_albastru = build_square(ctx, l, graphics::Color::BLUE)?;
+        let patrat_albastru = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
         let (x_src, y_src) = adjust_for_multiplayer(src.1, src.0, l, guest);
         let (x_dest, y_dest) = adjust_for_multiplayer(dest.1, dest.0, l, guest);
@@ -100,7 +100,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
     // Se coloreaza cu rosu regele, daca e in sah.
     if verif_sah(&state.tabla, state.turn) {
-        let patrat_rosu = build_square(ctx, l, graphics::Color::RED)?;
+        let patrat_rosu = build_square(ctx, l, graphics::Color::from_rgba(255, 0, 0, 170))?;
 
         let (x, y) = get_poz_rege(&state.tabla, state.turn);
         let (x, y) = adjust_for_multiplayer(y, x, l, guest);
