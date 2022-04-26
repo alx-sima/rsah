@@ -29,7 +29,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 
             ui.vertical_centered_justified(|ui| {
                 ui.group(|ui| {
-                    egui::ComboBox::from_label("")
+                    let combox = egui::ComboBox::from_label("")
                         .selected_text(format!("{}", state.game_mode))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut state.game_mode, GameMode::Clasic, "Clasic");
@@ -46,20 +46,27 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                                         GameMode::Custom(l.clone()),
                                         l,
                                     )
+                                    .on_hover_text("click-dreapta pentru a sterge!")
                                     .secondary_clicked()
                                 {
-                                    match ggez::filesystem::delete(ctx, l) {
-                                        Ok(_) => {
-                                            println!("{} was deleted", l);
-                                            //state.game_layouts = editor::list_files(ctx);
-                                        }
-                                        Err(e) => {
-                                            eprintln!("{}", e);
+                                    if let Err(e) = ggez::filesystem::delete(ctx, l) {
+                                        eprintln!("{}", e);
+                                    }
+
+                                    // Daca s-a sters layoutul selectat, se schimba la cel clasic.
+                                    if let GameMode::Custom(s) = &state.game_mode {
+                                        if s == l {
+                                            state.game_mode = GameMode::Clasic;
                                         }
                                     }
                                 }
                             }
                         });
+
+                    if combox.response.clicked() {
+                        state.game_layouts = editor::list_files(ctx);
+                    }
+
                     if ui.button("Local").clicked() {
                         state.game_state = GameState::Game;
                         load_layout(&state.game_mode, ctx).init_game(state);
@@ -209,57 +216,57 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext) {
 
 /// Randeaza meniul din editor.
 pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
-    egui::Window::new("egui-editor")
-        .title_bar(false)
-        .fixed_pos([0.0, 0.0])
-        .show(egui_ctx, |ui| {
-            // FIXME: sa functioneze pe toate rezolutiile
-            // Umple toata marginea din stanga
-            let (_, x, _) = get_dimensiuni_tabla(ctx);
-            let (_, y) = ggez::graphics::drawable_size(ctx);
-            ui.set_width(x - 20.0);
-            ui.set_height(y - 20.0);
+    egui::SidePanel::left("egui-editor").show(egui_ctx, |ui| {
+        // FIXME: sa functioneze pe toate rezolutiile
+        // Umple toata marginea din stanga
+        let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
+        let (_, y) = ggez::graphics::drawable_size(ctx);
+        ui.set_width(x_pad - 20.0);
+        ui.set_height(y - 20.0);
 
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Pion, "Pion");
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Tura, "Tura");
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Cal, "Cal");
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Nebun, "Nebun");
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Regina, "Regina");
-            ui.radio_value(&mut state.piesa_sel_editor, TipPiesa::Rege, "Rege");
+        for t in [
+            TipPiesa::Pion,
+            TipPiesa::Tura,
+            TipPiesa::Cal,
+            TipPiesa::Nebun,
+            TipPiesa::Regina,
+            TipPiesa::Rege,
+        ] {
+            ui.radio_value(&mut state.piesa_sel_editor, t, format!("{:?}", t).as_str());
+        }
 
-            ui.vertical_centered_justified(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut state.save_name_editor));
+        ui.vertical_centered_justified(|ui| {
+            ui.add(egui::TextEdit::singleline(&mut state.ed_save_name));
 
-                if ui.button("save").clicked() {
-                    if state.save_name_editor.is_empty() {
-                        return;
-                    }
+            let save_button = ui.button("save");
+            if save_button.clicked() {
+                if state.ed_save_name.is_empty() {
+                    return;
+                }
 
-                    generare::init_piese(&mut state.tabla);
+                generare::init_piese(&mut state.tabla);
 
-                    if state.tabla.valideaza_layout() {
-                        let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
-                        let mut f =
-                            filesystem::create(ctx, format!("/{}.json", state.save_name_editor))
-                                .unwrap();
-                        f.write_all(rez.as_bytes()).unwrap();
-                        state.game_state = GameState::MainMenu;
-                        state.game_layouts = editor::list_files(ctx);
-                    } else {
-                        for i in 0..8 {
-                            for j in 0..8 {
-                                state.tabla.mat[i][j].afecteaza = vec![];
-                                state.tabla.mat[i][j].atacat = vec![];
-                            }
+                if state.tabla.valideaza_layout() {
+                    let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
+                    let mut f =
+                        filesystem::create(ctx, format!("/{}.json", state.ed_save_name)).unwrap();
+                    f.write_all(rez.as_bytes()).unwrap();
+                    state.game_state = GameState::MainMenu;
+                } else {
+                    for i in 0..8 {
+                        for j in 0..8 {
+                            state.tabla.mat[i][j].afecteaza = vec![];
+                            state.tabla.mat[i][j].atacat = vec![];
                         }
                     }
                 }
+            }
 
-                if ui.button("back").clicked() {
-                    state.game_state = GameState::MainMenu;
-                }
-            });
+            if ui.button("back").clicked() {
+                state.game_state = GameState::MainMenu;
+            }
         });
+    });
 }
 
 /// (pentru editor): verifica daca exista cate un rege pe tabla.

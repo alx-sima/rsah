@@ -73,17 +73,16 @@ impl Piesa {
 
 /// culoarea unei piese (+ a jucatorului care o detine);
 /// folosita si pentru a retine al cui este randul sa mute
-/// FIXME: :)))
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Culoare {
-    /// Culoarea neagra.
-    Alb,
     /// Culoarea alba.
+    Alb,
+    /// Culoarea neagra.
     Negru,
 }
 
 impl Culoare {
-    pub(crate)fn invert(self) -> Culoare {
+    pub(crate) fn invert(self) -> Culoare {
         if self == Culoare::Alb {
             Culoare::Negru
         } else {
@@ -127,11 +126,11 @@ impl std::fmt::Display for TipPiesa {
 pub(crate) enum MatchState {
     /// Normal
     Playing,
-    /// Jucatorul [Culoare] e in mat (a pierdut)
+    /// Jucatorul `Culoare` e in mat (a pierdut)
     Mat(Culoare),
     /// Egalitate
     Pat,
-    /// Pionul de la `Pozitie` este promovat, 
+    /// Pionul de la `Pozitie` este promovat,
     /// se selecteaza in ce piesa se transforma.
     Promote(Pozitie),
 }

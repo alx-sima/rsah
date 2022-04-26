@@ -56,7 +56,7 @@ struct State {
     // ================================ Editor =================================
     /// (doar pt editor) Piesa care se va pune la click.
     piesa_sel_editor: TipPiesa,
-    save_name_editor: String,
+    ed_save_name: String,
 
     // ============================== Multiplayer ==============================
     /// Adresa IP a jocului hostat
@@ -93,7 +93,7 @@ impl Default for State {
     fn default() -> Self {
         State {
             address: String::from("127.0.0.1:8080"),
-            save_name_editor: String::from("save"),
+            ed_save_name: String::from("save"),
             egui_backend: EguiBackend::default(),
             piesa_sel_editor: TipPiesa::Pion,
             game_state: GameState::MainMenu,
@@ -216,9 +216,7 @@ fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
 }
 
 fn main() -> ggez::GameResult {
-    let mut state = State::default();
+    let state = State::default();
     let (ctx, event_loop) = build_context()?;
-    // FIXME: gaseste-i un alt loc
-    state.game_layouts = tabla::editor::list_files(&ctx);
     event::run(ctx, event_loop, state);
 }

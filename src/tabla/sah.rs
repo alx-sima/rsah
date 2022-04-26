@@ -35,6 +35,7 @@ pub(crate) fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
         }
         unreachable!()
         // TODO: verif filmare 26.04 ora 1:26 am (unknown)
+        // dupa promovare? cred ca stiu ce e
     })
 }
 

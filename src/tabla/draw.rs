@@ -132,7 +132,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
         for (i, j) in &state.miscari_disponibile {
             let (x, y) = adjust_for_multiplayer(*j, *i, l, guest);
-            if let Some(_) = state.tabla.at((*i, *j)).piesa {
+            if state.tabla.at((*i, *j)).piesa.is_some() {
                 // TODO: enpassant ar trebui sa intre aici
                 graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?;
             } else {
