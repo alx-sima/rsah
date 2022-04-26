@@ -1,6 +1,6 @@
 use ggez::graphics::{self, MeshBuilder};
 
-use crate::State;
+use crate::{State, TipMutare};
 
 use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::verif_sah};
 
@@ -130,13 +130,15 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
             .build(ctx)?;
         let patrat_verde = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
-        for (i, j) in &state.miscari_disponibile {
-            let (x, y) = adjust_for_multiplayer(*j, *i, l, guest);
-            if state.tabla.at((*i, *j)).piesa.is_some() {
-                // TODO: enpassant ar trebui sa intre aici
-                graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?;
-            } else {
-                graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?;
+        for mutare in &state.miscari_disponibile {
+            let (x, y) = adjust_for_multiplayer(mutare.dest.1, mutare.dest.0, l, guest);
+            match mutare.tip {
+                TipMutare::Normal | TipMutare::Rocada(_) => {
+                    graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?
+                }
+                TipMutare::Captura | TipMutare::EnPassant(_) => {
+                    graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?
+                }
             }
         }
 

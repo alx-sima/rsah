@@ -1,7 +1,4 @@
-use std::{
-    io::{Read, Write},
-    net::TcpStream,
-};
+use std::io::{Read, Write};
 
 use ggez::event::MouseButton;
 
@@ -162,14 +159,7 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
         if let Some(click_start) = state.click {
             if let Some(click_end) = input::get_mouse_square(ctx, state.guest) {
                 if click_start == click_end {
-                    player_turn(
-                        &mut state.tabla,
-                        &mut state.piesa_sel,
-                        &mut state.miscari_disponibile,
-                        &mut state.turn,
-                        &mut state.stream,
-                        (click_end.1, click_end.0),
-                    );
+                    player_turn(state, (click_end.1, click_end.0));
                 }
                 // else drag & drop??
             }
@@ -203,54 +193,53 @@ fn await_move(state: &mut State) {
 
 // FIXME: prea multe argumente
 fn player_turn(
-    tabla: &mut Tabla,
-    piesa_sel: &mut Option<(usize, usize)>,
-    miscari_disponibile: &mut Vec<(usize, usize)>,
-    turn: &mut Culoare,
-    stream: &mut Option<TcpStream>,
-    dest: (usize, usize),
+    state: &mut State,
+    //tabla: &mut Tabla,
+    //piesa_sel: &mut Option<(usize, usize)>,
+    //miscari_disponibile: &mut Vec<(usize, usize)>,
+    //turn: &mut Culoare,
+    //stream: &mut Option<TcpStream>,
+    click: Pozitie,
 ) {
     // Daca exista o piesa selectata...
-    if let Some(src) = *piesa_sel {
+    if let Some(src) = state.piesa_sel {
         // Daca miscarea este valida, efectueaza mutarea
-        if miscari_disponibile.contains(&dest) {
-            let mut mov = muta(tabla, src, dest);
-            tabla.ultima_miscare = Some((src, dest));
+        if state.miscari_disponibile.iter().any(|x| x.dest == click) {
+            let mut mov = muta(&mut state.tabla, src, click);
+            state.tabla.ultima_miscare = Some((src, click));
 
             // Randul urmatorului jucator
             // Schimba turn din alb in negru si din negru in alb
-            *turn = match *turn {
-                Culoare::Alb => Culoare::Negru,
-                Culoare::Negru => Culoare::Alb,
-            };
+            state.turn = state.turn.invert();
 
-            if let Some(end) = sah::verif_continua_jocul(tabla, *turn) {
-                tabla.match_state = end;
+            if let Some(end) = sah::verif_continua_jocul(&state.tabla, state.turn) {
+                state.tabla.match_state = end;
             }
 
-            if let MatchState::Mat(_) = tabla.match_state {
+            if let MatchState::Mat(_) = state.tabla.match_state {
                 mov += "#";
-            } else if verif_sah(tabla, *turn) {
+            } else if verif_sah(&state.tabla, state.turn) {
                 mov += "+";
             }
 
-            tabla.istoric.push(mov.clone());
+            state.tabla.istoric.push(mov.clone());
 
-            if let Some(stream) = stream {
+            if let Some(stream) = &mut state.stream {
                 stream.write_all(mov.as_bytes()).unwrap();
             }
         }
         // Deselecteaza piesa (indiferent daca s-a facut mutarea sau nu)
-        *piesa_sel = None;
-        *miscari_disponibile = vec![];
+        state.piesa_sel = None;
+        state.miscari_disponibile = vec![];
 
     // ...daca nu, o selecteaza (daca e de aceeasi culoare)
-    } else if let Some(piesa) = &tabla.at(dest).piesa {
-        if *turn == piesa.culoare {
-            *piesa_sel = Some(dest);
-            let miscari = miscari::get_miscari(tabla, dest, false);
+    } else if let Some(piesa) = &state.tabla.at(click).piesa {
+        if state.turn == piesa.culoare {
+            state.piesa_sel = Some(click);
+            let miscari = miscari::get_miscari(&state.tabla, click, false);
 
-            *miscari_disponibile = miscari::nu_provoaca_sah(tabla, miscari, dest, *turn);
+            state.miscari_disponibile =
+                miscari::nu_provoaca_sah(&state.tabla, miscari, click, state.turn);
         }
     }
 }

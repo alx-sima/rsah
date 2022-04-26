@@ -1,7 +1,10 @@
-use crate::tabla::{input::in_board, sah::e_atacat, MatTabla, Pozitie, Tabla, TipPiesa};
+use crate::{
+    tabla::{input::in_board, sah::e_atacat, MatTabla, Tabla, TipPiesa},
+    Mutare, TipMutare,
+};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
-pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
+pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Mutare> {
     let mut rez = vec![];
     let ui = i as usize;
     let uj = j as usize;
@@ -17,10 +20,16 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
                         != tabla[sumi][sumj].piesa.clone().unwrap().culoare
                         || tot_ce_afecteaza
                     {
-                        rez.push((sumi, sumj));
+                        rez.push(Mutare {
+                            tip: TipMutare::Captura,
+                            dest: (sumi, sumj),
+                        });
                     }
                 } else {
-                    rez.push((sumi, sumj));
+                    rez.push(Mutare {
+                        tip: TipMutare::Normal,
+                        dest: (sumi, sumj),
+                    });
                 }
             }
         }
@@ -31,7 +40,7 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 
 // FIXME: verifica daca dupa rocada se intampla ceva nasty, gen sah
 /// Se cauta pozitiile unde, daca este mutat regele, se face rocada.
-pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Pozitie> {
+pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {
     let mut rez = vec![];
     let rege = tabla.at((i, j)).piesa.clone().unwrap();
 
@@ -63,10 +72,10 @@ pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Pozitie> {
                     }
 
                     if ok {
-                        rez.push((i, (j as i32 + dir * 2) as usize));
-                        // Daca se gaseste rocada mica, e clar
-                        // ca cea mare nu se poate face
-                        break;
+                        rez.push(Mutare {
+                            tip: TipMutare::Rocada((i, (j as i32 + dtura) as usize)),
+                            dest: (i, (j as i32 + dir * 2) as usize),
+                        });
                     }
                 }
             }

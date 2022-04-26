@@ -46,7 +46,7 @@ struct State {
 
     // ================================== Joc ==================================
     /// Patratele disponibile.
-    miscari_disponibile: Vec<Pozitie>,
+    miscari_disponibile: Vec<Mutare>,
     /// Al cui e randul.
     turn: Culoare,
     /// Pozitia piesei pe care a fost dat click pt a se muta
@@ -69,6 +69,20 @@ struct State {
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
+}
+
+#[derive(Clone)]
+struct Mutare {
+    dest: Pozitie,
+    tip: TipMutare,
+}
+
+#[derive(Clone)]
+enum TipMutare {
+    Normal,
+    Captura,
+    EnPassant(Pozitie),
+    Rocada(Pozitie),
 }
 
 #[derive(PartialEq)]

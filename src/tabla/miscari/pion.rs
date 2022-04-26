@@ -1,8 +1,11 @@
-use crate::tabla::{input::in_board, Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
+use crate::{
+    tabla::{input::in_board, Culoare, MatTabla, Pozitie, Tabla, TipPiesa},
+    Mutare, TipMutare,
+};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 /// TODO: repara mismatch isize-usize pt readability
-pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
+pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Mutare> {
     let mut rez = Vec::new();
     let i = i as usize;
     let j = j as usize;
@@ -19,7 +22,10 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 
     // Daca patratul din fata pionului exista si e liber, miscarea e valabila.
     if in_board(i1 as i32, j as i32) && (tabla[i1][j].piesa.is_none() || tot_ce_afecteaza) {
-        rez.push((i1, j));
+        rez.push(Mutare {
+            tip: TipMutare::Normal,
+            dest: (i1, j),
+        });
 
         // Daca urmatoarele 2 patrate din fata pionului sunt libere,
         // iar pionul nu a fost deja mutat, acesta poate avansa 2 patrate.
@@ -28,7 +34,10 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
             && !tabla[i][j].piesa.clone().unwrap().mutat
             && (tabla[i2 as usize][j].piesa.is_none() || tot_ce_afecteaza)
         {
-            rez.push((i2, j));
+            rez.push(Mutare {
+                tip: TipMutare::Normal,
+                dest: (i2, j),
+            });
         }
     }
 
@@ -37,8 +46,8 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 
 /// Returneaza pozitiile pe care le poate ataca pionul.
 /// *pe_bune* inseamna ca trebuie sa existe o piesa atacata.
-/// TODO: nume mai sugestiv
-pub(super) fn ataca(tabla: &Tabla, poz: Pozitie, pe_bune: bool) -> Vec<Pozitie> {
+/// TODO: nume mai sugestiv al parametrului
+pub(super) fn ataca(tabla: &Tabla, poz: Pozitie, pe_bune: bool) -> Vec<Mutare> {
     let mut rez = vec![];
 
     let culoare = tabla.at(poz).piesa.clone().unwrap().culoare;
@@ -55,17 +64,27 @@ pub(super) fn ataca(tabla: &Tabla, poz: Pozitie, pe_bune: bool) -> Vec<Pozitie> 
             // daca piesa exista sau daca poate face en passant, pt ca *atacat*
             // foloseste doar pt a verifica sahul.
             if !pe_bune {
-                rez.push((i, j));
+                rez.push(Mutare {
+                    // TODO: e corect?
+                    tip: TipMutare::Captura,
+                    dest: (i, j),
+                });
                 continue;
             }
 
             if let Some(victima) = &tabla.at((i, j)).piesa {
                 if victima.culoare != culoare {
-                    rez.push((i, j));
+                    rez.push(Mutare {
+                        tip: TipMutare::Captura,
+                        dest: (i, j),
+                    });
                 }
             } else if let Some(victima) = &tabla.at((poz.0, j)).piesa {
                 if victima.culoare != culoare && verif_en_passant(tabla, poz.0, j) {
-                    rez.push((i, j));
+                    rez.push(Mutare {
+                        tip: TipMutare::EnPassant((poz.0, j)),
+                        dest: (i, j),
+                    });
                 }
             }
         }

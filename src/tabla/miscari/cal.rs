@@ -1,7 +1,10 @@
-use crate::tabla::{input::in_board, Pozitie, MatTabla};
+use crate::{
+    tabla::{input::in_board, MatTabla, Pozitie},
+    Mutare, TipMutare,
+};
 
-/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe *poz*
-pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Pozitie> {
+/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe `poz`
+pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
     let mut rez = vec![];
 
     // FIXME:
@@ -24,10 +27,15 @@ pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec
                     != tabla[sumi][sumj].piesa.clone().unwrap().culoare
                     || tot_ce_afecteaza
                 {
-                    rez.push((sumi, sumj));
+                    rez.push(Mutare {
+                        tip: TipMutare::Captura,
+                        dest: (sumi, sumj),
+                    });
                 }
-            } else {
-                rez.push((sumi, sumj));
+            } else {rez.push(Mutare {
+                        tip: TipMutare::Normal,
+                        dest: (sumi, sumj),
+                    });
             }
         }
     }
