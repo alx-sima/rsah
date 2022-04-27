@@ -10,7 +10,7 @@ use crate::{
     tabla::{
         editor, generare,
         input::get_dimensiuni_tabla,
-        sah::{e_in_sah, verif_continua_jocul},
+        sah::{in_sah, verif_continua_jocul},
         Culoare, MatTabla, MatchState, Piesa, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
@@ -190,7 +190,8 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context
                     {
                         // FIXME: nume full
                         if ui.button(p.to_string()).clicked() {
-                            let culoare = state.turn.invert();
+                            let mut culoare = state.turn;
+                            culoare.invert();
 
                             //let tabla = &mut state.tabla;
                             // TODO: verifica daca da sah cand promovezi pionul
@@ -327,7 +328,7 @@ impl Tabla {
         for culoare in [Culoare::Alb, Culoare::Negru] {
             if !exista_rege(&self.mat, culoare)
                 || verif_continua_jocul(self, culoare).is_some()
-                || e_in_sah(self, culoare)
+                || in_sah(self, culoare)
             {
                 return false;
             }

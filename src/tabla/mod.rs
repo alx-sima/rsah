@@ -82,11 +82,11 @@ pub(crate) enum Culoare {
 }
 
 impl Culoare {
-    pub(crate) fn invert(self) -> Culoare {
-        if self == Culoare::Alb {
-            Culoare::Negru
-        } else {
-            Culoare::Alb
+    /// Seteaza culoarea opusa.
+    pub(crate) fn invert(&mut self) {
+        *self = match *self {
+            Culoare::Alb => Culoare::Negru,
+            Culoare::Negru => Culoare::Alb,
         }
     }
 }

@@ -2,7 +2,7 @@ use ggez::graphics::{self, MeshBuilder};
 
 use crate::{State, TipMutare};
 
-use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::e_in_sah};
+use super::{input::get_dimensiuni_tabla, miscari::get_poz_rege, sah::in_sah};
 
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
@@ -88,7 +88,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
     let guest = state.guest;
 
-    // Se coloreaza cu albastru ultima miscare
+    // Se coloreaza ultima miscare
     if let Some((src, dest)) = state.tabla.ultima_miscare {
         let patrat_albastru = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
@@ -99,7 +99,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     }
 
     // Se coloreaza cu rosu regele, daca e in sah.
-    if e_in_sah(&state.tabla, state.turn) {
+    if in_sah(&state.tabla, state.turn) {
         let patrat_rosu = build_square(ctx, l, graphics::Color::from_rgba(255, 0, 0, 170))?;
 
         let (x, y) = get_poz_rege(&state.tabla, state.turn);
@@ -107,41 +107,41 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
         graphics::draw(ctx, &patrat_rosu, ([x_ofs + x, y_ofs + y],))?;
     }
 
-    // Se coloreaza cu verde piesa selectata si
-    // cu galben mutarile posibile ale acesteia.
-    if let Some((x, y)) = state.piesa_sel {
-        let patrat_galben = MeshBuilder::new()
-            .circle(
-                graphics::DrawMode::fill(),
-                [l / 2.0, l / 2.0],
-                l / 8.0,
-                0.01,
-                graphics::Color::from_rgba(0, 0, 0, 127),
-            )?
-            .build(ctx)?;
-        let patrat_galben_gol = MeshBuilder::new()
-            .circle(
-                graphics::DrawMode::stroke(5.0),
-                [l / 2.0, l / 2.0],
-                l / 2.0,
-                0.01,
-                graphics::Color::from_rgba(0, 0, 0, 127),
-            )?
-            .build(ctx)?;
-        let patrat_verde = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
+    // Se afiseaza mutarile posibile.
+    let patrat_galben = MeshBuilder::new()
+        .circle(
+            graphics::DrawMode::fill(),
+            [l / 2.0, l / 2.0],
+            l / 8.0,
+            0.01,
+            graphics::Color::from_rgba(0, 0, 0, 127),
+        )?
+        .build(ctx)?;
+    let patrat_galben_gol = MeshBuilder::new()
+        .circle(
+            graphics::DrawMode::stroke(5.0),
+            [l / 2.0, l / 2.0],
+            l / 2.0,
+            0.01,
+            graphics::Color::from_rgba(0, 0, 0, 127),
+        )?
+        .build(ctx)?;
+    let patrat_verde = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
-        for mutare in &state.miscari_disponibile {
-            let (x, y) = adjust_for_multiplayer(mutare.dest.1, mutare.dest.0, l, guest);
-            match mutare.tip {
-                TipMutare::Normal | TipMutare::Rocada(_) => {
-                    graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?
-                }
-                TipMutare::Captura | TipMutare::EnPassant(_) => {
-                    graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?
-                }
+    for mutare in &state.miscari_disponibile {
+        let (x, y) = adjust_for_multiplayer(mutare.dest.1, mutare.dest.0, l, guest);
+        match mutare.tip {
+            TipMutare::Normal | TipMutare::Rocada(_) => {
+                graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?
+            }
+            TipMutare::Captura | TipMutare::EnPassant(_) => {
+                graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?
             }
         }
+    }
 
+    // Se coloreaza piesa selectata.
+    if let Some((x, y)) = state.piesa_sel {
         let (x, y) = adjust_for_multiplayer(y, x, l, guest);
         graphics::draw(ctx, &patrat_verde, ([x_ofs + x, y_ofs + y],))?;
     }
@@ -149,6 +149,8 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 }
 
 /// Ajusteaza coordonatele pt multiplayer (cand tabla este invers).
+///
+/// Returneaza in coordonate xOy.
 fn adjust_for_multiplayer(x: usize, y: usize, l: f32, guest: bool) -> (f32, f32) {
     let x = x as f32;
     let y = y as f32;

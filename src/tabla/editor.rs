@@ -5,37 +5,25 @@ use super::{input, Culoare, MatTabla, Piesa, TipPiesa};
 
 use lazy_static::lazy_static;
 
-/// Plaseaza piesa `tip` a jucatorului `culoare` la `(i, j)`.
-pub(crate) fn place(tabla: &mut MatTabla, i: usize, j: usize, tip: TipPiesa, culoare: Culoare) {
-    if tabla[i][j].piesa.is_none() {
-        tabla[i][j].piesa = Some(Piesa::new(tip, culoare));
-    }
-}
-
-/// Sterge piesa de pe pozitia `(i, j)`.
-pub(crate) fn delete(tabla: &mut MatTabla, i: usize, j: usize) {
-    tabla[i][j] = Default::default();
-}
-
 /// Handle pt. clickurile facute in editor:
-///  - `click`: pune piesa *alba*;
-///  - `click dr.`: pune piesa *neagra*;
-///  - `clic mij.`: *sterge* piesa.
+///  - `click`: pune piesa `alba`;
+///  - `click dr.`: pune piesa `neagra`;
+///  - `clic mij.`: sterge piesa.
 pub(crate) fn editor_handler(ctx: &mut ggez::Context, tabla: &mut MatTabla, piesa_sel: TipPiesa) {
     // la un click, amplaseaza piesa alba
     if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
         // reversed va fi mereu false pt ca nu esti masochist sa editezi tabla invers
-        if let Some((j, i)) = input::get_mouse_square(ctx, false) {
+        if let Some((i,j )) = input::get_mouse_square(ctx, false) {
             place(tabla, i, j, piesa_sel, Culoare::Alb);
         }
     // la click-dreapta, amplaseaza piesa neagra
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
-        if let Some((j, i)) = input::get_mouse_square(ctx, false) {
+        if let Some((i, j)) = input::get_mouse_square(ctx, false) {
             place(tabla, i, j, piesa_sel, Culoare::Negru);
         }
     // la click pe rotita, sterge pionul
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
-        if let Some((j, i)) = input::get_mouse_square(ctx, false) {
+        if let Some((i, j)) = input::get_mouse_square(ctx, false) {
             delete(tabla, i, j);
         }
     }
@@ -58,6 +46,18 @@ pub(crate) fn list_files(ctx: &ggez::Context) -> Vec<String> {
         }
     }
     res
+}
+
+/// Plaseaza piesa `tip` a jucatorului `culoare` la `(i, j)`.
+pub(crate) fn place(tabla: &mut MatTabla, i: usize, j: usize, tip: TipPiesa, culoare: Culoare) {
+    if tabla[i][j].piesa.is_none() {
+        tabla[i][j].piesa = Some(Piesa::new(tip, culoare));
+    }
+}
+
+/// Sterge piesa de pe pozitia `(i, j)`.
+pub(crate) fn delete(tabla: &mut MatTabla, i: usize, j: usize) {
+    tabla[i][j] = Default::default();
 }
 
 /// Verifica daca layoutul din fisierul `path` este valid.

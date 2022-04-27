@@ -1,7 +1,7 @@
 use crate::{Mutare, TipMutare};
 
 use super::{
-    game::muta, input::in_board, sah::e_in_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
+    game::muta, input::in_board, sah::in_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
 };
 
 mod cal;
@@ -53,25 +53,27 @@ fn cautare_in_linie(
     rez
 }
 
-/// Returneaza o `lista de (linie, coloana)` cu toate patratele in care se poate muta piesa de la `poz`
+/// Returneaza o `lista de (linie, coloana)` cu
+/// toate patratele in care se poate muta `piesa`
 /// (**include piesele pe care le ataca**).
 ///
-/// Daca `tot_ce_afecteaza` e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
-pub(crate) fn get_miscari(tabla: &Tabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
-    let (i, j) = poz;
+/// Daca `tot_ce_afecteaza` e setat, se returneaza **toate**
+/// celulele ale caror modificare ar putea afecta piesa.
+pub(crate) fn get_miscari(tabla: &Tabla, piesa: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
+    let (i, j) = piesa;
 
-    if let Some(piesa) = &tabla.at((i, j)).piesa {
-        match piesa.tip {
+    if let Some(p) = &tabla.at((i, j)).piesa {
+        match p.tip {
             // Pionul poate sa avanseze sau sa captureze pe diagonala
             TipPiesa::Pion => [
                 pion::get(&tabla.mat, i as i32, j as i32, tot_ce_afecteaza),
                 pion::ataca(tabla, (i, j), true),
             ]
             .concat(),
-            TipPiesa::Tura => tura::get(&tabla.mat, poz, tot_ce_afecteaza),
-            TipPiesa::Cal => cal::get(&tabla.mat, poz, tot_ce_afecteaza),
-            TipPiesa::Nebun => nebun::get(&tabla.mat, poz, tot_ce_afecteaza),
-            TipPiesa::Regina => regina::get(&tabla.mat, poz, tot_ce_afecteaza),
+            TipPiesa::Tura => tura::get(&tabla.mat, piesa, tot_ce_afecteaza),
+            TipPiesa::Cal => cal::get(&tabla.mat, piesa, tot_ce_afecteaza),
+            TipPiesa::Nebun => nebun::get(&tabla.mat, piesa, tot_ce_afecteaza),
+            TipPiesa::Regina => regina::get(&tabla.mat, piesa, tot_ce_afecteaza),
             TipPiesa::Rege => [
                 rege::rocada(tabla, i, j),
                 rege::get(&tabla.mat, i as i32, j as i32, tot_ce_afecteaza),
@@ -116,8 +118,7 @@ pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
         for j in 0..8 {
             if let Some(piesa) = &tabla.at((i, j)).piesa {
                 if piesa.culoare == culoare {
-                    let miscari = get_miscari(tabla, (i, j), false);
-                    let miscari = nu_provoaca_sah(tabla, miscari, (i, j), culoare);
+                    let miscari = nu_provoaca_sah(tabla, (i, j), culoare);
                     if !miscari.is_empty() {
                         return true;
                     }
@@ -129,23 +130,17 @@ pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     false
 }
 
-/// Filtreaza vectorul `miscari`, returnandu-le doar pe
-/// cele care nu provoaca sah pentru regele propriu, sau,
-/// daca acesta e deja in sah, doar pe cele care il scot.
-pub(crate) fn nu_provoaca_sah(
-    tabla: &Tabla,
-    miscari: Vec<Mutare>,
-    piesa: Pozitie,
-    culoare: Culoare,
-) -> Vec<Mutare> {
+/// Cauta doar miscarile care nu provoaca sah pentru regele propriu, 
+/// sau, daca acesta e deja in sah, doar pe cele care il scot.
+pub(crate) fn nu_provoaca_sah(tabla: &Tabla, piesa: Pozitie, culoare: Culoare) -> Vec<Mutare> {
     let mut rez = vec![];
 
-    for mutare in miscari {
+    for mutare in get_miscari(tabla, piesa, false) {
         // Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah.
         let mut dummy = tabla.clone();
 
         muta(&mut dummy, piesa, &mutare);
-        if !e_in_sah(&dummy, culoare) {
+        if !in_sah(&dummy, culoare) {
             rez.push(mutare);
         }
     }
