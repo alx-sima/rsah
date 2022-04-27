@@ -157,17 +157,12 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
         });
 }
 
-/// Randeaza meniul din timpul jocului si cel de la sfarsitul acestuia.
+/// Randeaza meniul din timpul si de la sfarsitul jocului.
 pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context) {
     let match_state = &state.tabla.match_state;
 
     if *match_state == MatchState::Playing {
-        egui::SidePanel::left("egui-game").show(gui_ctx, |ui| {
-            let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
-            let (_, y) = ggez::graphics::drawable_size(ctx);
-            ui.set_width(x_pad - 20.0);
-            ui.set_height(y - 20.0);
-
+        create_side_panel(ctx, "egui-game").show(gui_ctx, |ui| {
             if ui.button("back").clicked() {
                 state.game_state = GameState::MainMenu;
                 state.stream = None;
@@ -226,22 +221,19 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context
 
 /// Randeaza meniul din editor.
 pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::Context) {
-    egui::SidePanel::left("egui-editor").show(egui_ctx, |ui| {
-        let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
-        let (_, y) = ggez::graphics::drawable_size(ctx);
-        ui.set_width(x_pad - 20.0);
-        ui.set_height(y - 20.0);
-
-        for t in [
-            TipPiesa::Pion,
-            TipPiesa::Tura,
-            TipPiesa::Cal,
-            TipPiesa::Nebun,
-            TipPiesa::Regina,
-            TipPiesa::Rege,
-        ] {
-            ui.radio_value(&mut state.piesa_sel_editor, t, format!("{:?}", t).as_str());
-        }
+    create_side_panel(ctx, "egui-editor").show(egui_ctx, |ui| {
+        ui.group(|ui| {
+            for t in [
+                TipPiesa::Pion,
+                TipPiesa::Tura,
+                TipPiesa::Cal,
+                TipPiesa::Nebun,
+                TipPiesa::Regina,
+                TipPiesa::Rege,
+            ] {
+                ui.radio_value(&mut state.piesa_sel_editor, t, &format!("{:?}", t));
+            }
+        });
 
         ui.vertical_centered_justified(|ui| {
             ui.add(egui::TextEdit::singleline(&mut state.ed_save_name));
@@ -294,6 +286,14 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
         }
     }
     false
+}
+
+fn create_side_panel(ctx: &ggez::Context, id: &str) -> egui::SidePanel {
+    let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
+    egui::SidePanel::left(id)
+        .min_width(x_pad - 20.0)
+        .max_width(x_pad - 20.0)
+        .resizable(false)
 }
 
 fn load_layout(game_mode: &GameMode, ctx: &ggez::Context) -> Tabla {

@@ -6,7 +6,7 @@ pub(crate) fn in_board(i: i32, j: i32) -> bool {
 }
 
 /// Calculeaza latura unui patratel de pe tabla de sah si paddingul la stanga/sus,
-/// pentru ca tabla sa fie centrata.
+/// pentru ca tabla sa fie la centru-dreapta (in stanga va fi gui-ul).
 /// Returneaza *(latura, offset x, offset y)*.
 pub(crate) fn get_dimensiuni_tabla(ctx: &ggez::Context) -> (f32, f32, f32) {
     let (width, height) = graphics::drawable_size(ctx);
@@ -16,17 +16,14 @@ pub(crate) fn get_dimensiuni_tabla(ctx: &ggez::Context) -> (f32, f32, f32) {
         (width / 8.0, 0.0, h_ofs)
     // Landscape
     } else {
-        let w_ofs = (width - height) / 2.0;
+        let w_ofs = width - height;
         (height / 8.0, w_ofs, 0.0)
     }
 }
 
 /// Returneaza coordonatele patratului unde se afla mouse-ul, sau
 /// None => mouse-ul nu se afla in tabla de sah
-pub(crate) fn get_mouse_square(
-    ctx: &mut ggez::Context,
-    reversed: bool,
-) -> Option<(usize, usize)> {
+pub(crate) fn get_mouse_square(ctx: &mut ggez::Context, reversed: bool) -> Option<(usize, usize)> {
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
     let cursor = ggez::input::mouse::position(ctx);
 
