@@ -10,6 +10,9 @@ description = "Un joc de sah scris in rust."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+hover = []
+
 [dependencies]
 egui = "^0.16.1"
 ggez = "^0.7.0"

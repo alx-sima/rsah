@@ -64,7 +64,6 @@ fn await_move(state: &mut State) {
 /// Handler pt. randul oricarui jucatorul (singleplayer),
 /// sau al celui de pe acest device (multiplayer).
 fn your_turn(state: &mut State, start: Pozitie, end: Pozitie) {
-    println!("{start:?} {end:?}");
     // Daca miscarea este valida, efectueaza mutarea.
     if let Some(mutare) = state.miscari_disponibile.iter().find(|x| x.dest == end) {
         // Daca nu e o piesa selectata, se ia cea de la inceputul clickului.
