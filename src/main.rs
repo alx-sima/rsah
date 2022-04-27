@@ -243,6 +243,7 @@ fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
         .build()
 }
 
+/// Entry-pointul aplicatiei.
 fn main() -> ggez::GameResult {
     let state = State::default();
     let (ctx, event_loop) = build_context()?;

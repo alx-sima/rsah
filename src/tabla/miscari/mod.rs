@@ -13,7 +13,6 @@ mod tura;
 
 /// Returneaza o lista cu pozitiile in care poate ajunge un patratel de la (i, j)
 /// deplasat liniar, in functie de versori
-// FIXME: nume mai bune pt parametru?
 fn cautare_in_linie(
     tabla: &MatTabla,
     poz: Pozitie,
@@ -56,6 +55,7 @@ fn cautare_in_linie(
 
 /// Returneaza o `lista de (linie, coloana)` cu toate patratele in care se poate muta piesa de la `poz`
 /// (**include piesele pe care le ataca**).
+///
 /// Daca `tot_ce_afecteaza` e setat, se returneaza **toate** celulele ale caror modificare ar putea afecta piesa.
 pub(crate) fn get_miscari(tabla: &Tabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
     let (i, j) = poz;
@@ -109,8 +109,8 @@ pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<Mutare> {
     }
 }
 
-/// Verifica daca jucatorul `culoare` mai are miscari
-/// disponibile, fara a verifica daca jucatorul este in sah.
+/// Verifica daca jucatorul `culoare` mai are miscari posibile,
+/// **fara a verifica daca jucatorul este in sah**.
 pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     for i in 0..8 {
         for j in 0..8 {
@@ -129,8 +129,9 @@ pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     false
 }
 
-/// Filtreaza vectorul miscari, ramanand doar cele care nu provoaca sah pentru regele propriu,
-/// sau, daca acesta e deja in sah, doar cele care il scot.
+/// Filtreaza vectorul `miscari`, returnandu-le doar pe
+/// cele care nu provoaca sah pentru regele propriu, sau,
+/// daca acesta e deja in sah, doar pe cele care il scot.
 pub(crate) fn nu_provoaca_sah(
     tabla: &Tabla,
     miscari: Vec<Mutare>,
@@ -140,10 +141,11 @@ pub(crate) fn nu_provoaca_sah(
     let mut rez = vec![];
 
     for mutare in miscari {
-        // "Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah"
-        let mut backup = tabla.clone();
-        muta(&mut backup, piesa, &mutare);
-        if !e_in_sah(&backup, culoare) {
+        // Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah.
+        let mut dummy = tabla.clone();
+
+        muta(&mut dummy, piesa, &mutare);
+        if !e_in_sah(&dummy, culoare) {
             rez.push(mutare);
         }
     }
@@ -164,7 +166,7 @@ pub(crate) fn set_influenta(tabla: &mut Tabla, poz: Pozitie) {
     }
 }
 
-/// Inversul la `set_influenta`.
+/// Inversul functiei `set_influenta`.
 pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: Pozitie) {
     // Sterge din lista de piese afectate a celulei (x, y) piesa.
     for i in get_miscari(tabla, poz, true) {

@@ -290,9 +290,10 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
 
 fn create_side_panel(ctx: &ggez::Context, id: &str) -> egui::SidePanel {
     let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
+    let x_pad = x_pad - 20.0;
     egui::SidePanel::left(id)
-        .min_width(x_pad - 20.0)
-        .max_width(x_pad - 20.0)
+        .min_width(x_pad)
+        .max_width(x_pad)
         .resizable(false)
 }
 
