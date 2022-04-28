@@ -69,6 +69,7 @@ struct State {
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
+    mutare_buf: String,
 }
 
 #[derive(Clone, Debug)]
@@ -119,6 +120,7 @@ impl Default for State {
     /// Valorile initiale ale variabilelor globale.
     fn default() -> Self {
         State {
+            mutare_buf: String::new(),
             ed_save_name: String::from("custom_layout"),
             address: String::from("127.0.0.1:8080"),
             egui_backend: EguiBackend::default(),

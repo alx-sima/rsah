@@ -84,10 +84,14 @@ fn your_turn(state: &mut State, start: Pozitie, end: Pozitie) {
         } else if sah::in_sah(&state.tabla, state.turn) {
             notatie += "+";
         }
-        // TODO: aici se poate baga promovarea pionului?
 
+        if let MatchState::Promote(_) = state.tabla.match_state {
+            state.mutare_buf = notatie;
+            return;
+        }
+
+        // Daca nu se asteapta promovarea unui pion, se scrie mutarea.
         state.tabla.istoric.push(notatie.clone());
-
         if let Some(stream) = &mut state.stream {
             stream.write_all(notatie.as_bytes()).unwrap();
         }

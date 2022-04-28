@@ -161,62 +161,80 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
 pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context) {
     let match_state = &state.tabla.match_state;
 
-    if *match_state == MatchState::Playing {
-        create_side_panel(ctx, "egui-game").show(gui_ctx, |ui| {
-            if ui.button("back").clicked() {
-                state.game_state = GameState::MainMenu;
-                state.stream = None;
-            }
-            // afiseaza ultimele 10 miscari
-            ui.group(|ui| {
-                ui.label("istoric:");
-                for i in state.tabla.istoric.iter().rev().take(10) {
-                    ui.label(i);
+    match *match_state {
+        MatchState::Playing => {
+            create_side_panel(ctx, "egui-game").show(gui_ctx, |ui| {
+                if ui.button("back").clicked() {
+                    state.game_state = GameState::MainMenu;
+                    state.stream = None;
                 }
-            });
-        });
-    } else if let MatchState::Promote(poz) = match_state {
-        egui::Window::new("egui-promote")
-            .title_bar(false)
-            .show(gui_ctx, |ui| {
-                ui.horizontal(|ui| {
-                    for p in [
-                        TipPiesa::Tura,
-                        TipPiesa::Cal,
-                        TipPiesa::Nebun,
-                        TipPiesa::Regina,
-                    ]
-                    .iter()
-                    {
-                        // FIXME: nume full
-                        if ui.button(p.to_string()).clicked() {
-                            let mut culoare = state.turn;
-                            culoare.invert();
-
-                            //let tabla = &mut state.tabla;
-                            // TODO: verifica daca da sah cand promovezi pionul
-                            // recalculeaza piesele atacate
-                            state.tabla.mat[poz.0][poz.1].piesa = Some(Piesa::new(*p, culoare));
-                            // TODO: fix
-                            //tabla.match_state = MatchState::Playing;
-                        }
+                // afiseaza ultimele 10 miscari
+                ui.group(|ui| {
+                    ui.label("istoric:");
+                    for i in state.tabla.istoric.iter().rev().take(10) {
+                        ui.label(i);
                     }
                 });
             });
-    } else {
-        egui::Window::new("egui-end-game")
-            .title_bar(false)
-            .show(gui_ctx, |ui| {
-                if *match_state == MatchState::Pat {
-                    ui.label("Egalitate!");
-                } else if let MatchState::Mat(loser) = match_state {
-                    ui.label(format!("{:?} este in mat!", loser).as_str());
-                }
+        }
+        MatchState::Promote(poz) => {
+            egui::Window::new("egui-promote")
+                .title_bar(false)
+                .show(gui_ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        for p in [
+                            TipPiesa::Tura,
+                            TipPiesa::Cal,
+                            TipPiesa::Nebun,
+                            TipPiesa::Regina,
+                        ]
+                        .iter()
+                        {
+                            if ui.button(&format!("{:?}", p)).clicked() {
+                                let mut culoare = state.turn;
+                                culoare.invert();
 
-                if ui.button("Main Menu").clicked() {
-                    state.game_state = GameState::MainMenu;
-                }
-            });
+                                // TODO: verifica daca da sah cand promovezi pionul
+                                // recalculeaza piesele atacate
+                                state.tabla.mat[poz.0][poz.1].piesa = Some(Piesa::new(*p, culoare));
+                                let mutare = format!("{}->{}", state.mutare_buf, p);
+                                println!("{}", mutare);
+
+                                // Se scrie mutarea
+                                state.tabla.istoric.push(mutare.clone());
+                                if let Some(s) = &mut state.stream {
+                                    s.write_all(mutare.as_bytes()).unwrap();
+                                }
+
+                                // Deselecteaza piesa.
+                                state.piesa_sel = None;
+                                state.miscari_disponibile = vec![];
+                                // Se revine la joc
+                                state.tabla.match_state = MatchState::Playing;
+                            }
+                        }
+                    });
+                });
+        }
+        _ => {
+            egui::Window::new("egui-end-game")
+                .title_bar(false)
+                .show(gui_ctx, |ui| {
+                    match *match_state {
+                        MatchState::Pat => {
+                            ui.label("Egalitate!");
+                        }
+                        MatchState::Mat(loser) => {
+                            ui.label(&format!("{:?} este in mat!", loser));
+                        }
+                        _ => unreachable!(),
+                    }
+
+                    if ui.button("Main Menu").clicked() {
+                        state.game_state = GameState::MainMenu;
+                    }
+                });
+        }
     }
 }
 
