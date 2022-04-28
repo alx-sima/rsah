@@ -8,10 +8,12 @@ use ggez_egui::EguiContext;
 
 use crate::{
     tabla::{
-        editor, generare,
+        editor,
+        game::amplaseaza,
+        generare,
         input::get_dimensiuni_tabla,
         sah::{in_sah, verif_continua_jocul},
-        Culoare, MatTabla, MatchState, Piesa, Tabla, TipPiesa,
+        Culoare, MatTabla, MatchState, Tabla, TipPiesa,
     },
     GameMode, GameState, State,
 };
@@ -178,43 +180,38 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context
             });
         }
         MatchState::Promote(poz) => {
-            egui::Window::new("egui-promote")
-                .title_bar(false)
-                .show(gui_ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        for p in [
-                            TipPiesa::Tura,
-                            TipPiesa::Cal,
-                            TipPiesa::Nebun,
-                            TipPiesa::Regina,
-                        ]
-                        .iter()
-                        {
-                            if ui.button(&format!("{:?}", p)).clicked() {
-                                let mut culoare = state.turn;
-                                culoare.invert();
+            create_side_panel(ctx, "egui-promote").show(gui_ctx, |ui| {
+                ui.vertical(|ui| {
+                    for p in [
+                        TipPiesa::Tura,
+                        TipPiesa::Cal,
+                        TipPiesa::Nebun,
+                        TipPiesa::Regina,
+                    ]
+                    .iter()
+                    {
+                        if ui.button(&format!("{:?}", p)).clicked() {
+                            let mut culoare = state.turn;
+                            culoare.invert();
 
-                                // TODO: verifica daca da sah cand promovezi pionul
-                                // recalculeaza piesele atacate
-                                state.tabla.mat[poz.0][poz.1].piesa = Some(Piesa::new(*p, culoare));
-                                let mutare = format!("{}->{}", state.mutare_buf, p);
-                                println!("{}", mutare);
+                            amplaseaza(&mut state.tabla, poz, *p, culoare);
+                            let mutare = format!("{}={}", state.mutare_buf, p);
 
-                                // Se scrie mutarea
-                                state.tabla.istoric.push(mutare.clone());
-                                if let Some(s) = &mut state.stream {
-                                    s.write_all(mutare.as_bytes()).unwrap();
-                                }
-
-                                // Deselecteaza piesa.
-                                state.piesa_sel = None;
-                                state.miscari_disponibile = vec![];
-                                // Se revine la joc
-                                state.tabla.match_state = MatchState::Playing;
+                            // Se scrie mutarea
+                            state.tabla.istoric.push(mutare.clone());
+                            if let Some(s) = &mut state.stream {
+                                s.write_all(mutare.as_bytes()).unwrap();
                             }
+
+                            // Deselecteaza piesa.
+                            state.piesa_sel = None;
+                            state.miscari_disponibile = vec![];
+                            // Se revine la joc
+                            state.tabla.match_state = MatchState::Playing;
                         }
-                    });
+                    }
                 });
+            });
         }
         _ => {
             egui::Window::new("egui-end-game")

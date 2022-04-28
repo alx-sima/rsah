@@ -1,6 +1,8 @@
-use crate::{
-    tabla::{input::in_board, sah::e_atacat, MatTabla, Tabla, TipPiesa},
-    Mutare, TipMutare,
+use crate::tabla::{
+    input::in_board,
+    miscari::{Mutare, TipMutare},
+    sah::e_atacat,
+    MatTabla, Tabla, TipPiesa,
 };
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
@@ -45,7 +47,7 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 ///  - nu se trece prin alte piese
 ///  - nu se trece prin sah
 ///  - tura este la *4 patratele la stanga* (rocada mare),
-/// sau *3 la dreapta* (rocada mica) de rege. 
+/// sau *3 la dreapta* (rocada mica) de rege.
 /// Nu conteaza pozitia efectiva, ci doar distanta,
 ///  pt. a se putea face rocada si pe layouturi random sau custom.
 pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {

@@ -1,15 +1,34 @@
-use crate::{Mutare, TipMutare};
-
 use super::{
     game::muta, input::in_board, sah::in_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
 };
 
-mod cal;
-mod nebun;
-mod pion;
-mod rege;
-mod regina;
-mod tura;
+#[derive(Clone, Debug)]
+pub(crate) struct Mutare {
+    /// Pozitia pe care va ajunge piesa mutata.
+    pub(crate) dest: Pozitie,
+    /// In ce consta mutarea.
+    pub(crate) tip: TipMutare,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum TipMutare {
+    /// Mutare normala.
+    Normal,
+    /// O piesa este capturata.
+    Captura,
+    /// Miscarea presupune un en passant.
+    /// Se retine pozitia **efectiva** a
+    /// pionului care va fi capturat,
+    /// nu destinatia, aceea va fi in `Mutare.dest`.
+    EnPassant(Pozitie),
+    /// Miscarea presupune o rocada.
+    /// Se retine pozitia turei care participa.
+    Rocada(Pozitie),
+    /// Pionul este promovat in [TipPiesa].
+    /// Fieldul e folosit doar pt decodarea
+    /// notatiilor algebrice (pe multiplayer).
+    Promovare(TipPiesa),
+}
 
 /// Returneaza o lista cu pozitiile in care poate ajunge un patratel de la (i, j)
 /// deplasat liniar, in functie de versori
@@ -130,7 +149,7 @@ pub(crate) fn exista_miscari(tabla: &Tabla, culoare: Culoare) -> bool {
     false
 }
 
-/// Cauta doar miscarile care nu provoaca sah pentru regele propriu, 
+/// Cauta doar miscarile care nu provoaca sah pentru regele propriu,
 /// sau, daca acesta e deja in sah, doar pe cele care il scot.
 pub(crate) fn nu_provoaca_sah(tabla: &Tabla, piesa: Pozitie, culoare: Culoare) -> Vec<Mutare> {
     let mut rez = vec![];
@@ -183,3 +202,10 @@ pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> Pozitie {
         tabla.regi.1
     }
 }
+
+mod cal;
+mod nebun;
+mod pion;
+mod rege;
+mod regina;
+mod tura;

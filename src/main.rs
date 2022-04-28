@@ -10,7 +10,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{draw, Culoare, Pozitie, Tabla, TipPiesa};
+use tabla::{draw, Culoare, Pozitie, Tabla, TipPiesa, miscari::Mutare};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -72,29 +72,6 @@ struct State {
     mutare_buf: String,
 }
 
-#[derive(Clone, Debug)]
-struct Mutare {
-    /// Pozitia pe care va ajunge piesa mutata.
-    dest: Pozitie,
-    /// In ce consta mutarea.
-    tip: TipMutare,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-enum TipMutare {
-    /// Mutare normala.
-    Normal,
-    /// O piesa este capturata.
-    Captura,
-    /// Miscarea presupune un en passant.
-    /// Se retine pozitia **efectiva** a
-    /// pionului care va fi capturat,
-    /// nu destinatia, aceea va fi in `Mutare.dest`.
-    EnPassant(Pozitie),
-    /// Miscarea presupune o rocada.
-    /// Se retine pozitia turei care participa.
-    Rocada(Pozitie),
-}
 
 #[derive(PartialEq)]
 enum GameMode {

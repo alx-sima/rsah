@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use ggez::event::MouseButton;
 
-use crate::{GameState, Mutare, State, TipMutare};
+use crate::{tabla::miscari::TipMutare, GameState, Mutare, State};
 
 use super::{
     input, miscari, notatie, sah, Culoare, MatchState, Patratel, Piesa, Pozitie, Tabla, TipPiesa,
@@ -51,12 +51,22 @@ fn await_move(state: &mut State) {
             // FIXME:
             muta(&mut state.tabla, src, &mutare);
             state.tabla.ultima_miscare = Some((src, mutare.dest));
+            println!("{:?}", mutare);
+
+            // Daca pionul este promovat, se updateaza aici.
+            if let TipMutare::Promovare(piesa) = mutare.tip {
+                state.tabla.get(mutare.dest).piesa = Some(Piesa::new(piesa, state.turn));
+                amplaseaza(&mut state.tabla, mutare.dest, piesa, state.turn);
+                state.tabla.match_state = MatchState::Playing;
+            }
 
             // Randul urmatorului jucator
             state.turn.invert();
 
             // FIXME: ????
             sah::verif_continua_jocul(&state.tabla, state.turn);
+        } else {
+            println!("{notatie}");
         }
     }
 }
@@ -209,4 +219,32 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     }
 
     notatie
+}
+
+/// Amplaseaza `piesa` de `culoare` pe pozitia
+/// `poz`, resetand celulele influentate.
+/// Nu verifica rocade sau en passant, fiind
+/// intentionata doar pt promovarea pionului.
+pub(crate) fn amplaseaza(tabla: &mut Tabla, poz: Pozitie, piesa: TipPiesa, culoare: Culoare) {
+    // Vechea pozitie a piesei
+    let p_old = tabla.at(poz).clone();
+
+    let mut pcs_to_reset = p_old.afecteaza;
+    pcs_to_reset.push(poz);
+
+    for i in &pcs_to_reset {
+        miscari::clear_influenta(tabla, *i);
+    }
+
+    tabla.get(poz).piesa = Some(Piesa {
+        mutat: true,
+        tip: piesa,
+        culoare,
+        // FIXME:
+        pozitii_anterioare: vec![],
+    });
+
+    for i in pcs_to_reset {
+        miscari::set_influenta(tabla, i);
+    }
 }

@@ -74,24 +74,6 @@ impl Tabla {
 
     /// Genereaza o [Tabla] initializata dintr-o [MatTabla].
     pub(crate) fn from_layout(layout: MatTabla) -> Tabla {
-        // Wall of shame: copiez o matrice intr-alta cu 2 foruri
-        /*
-        for (i, line) in layout.iter().enumerate() {
-            for (j, elem) in line.iter().enumerate() {
-                if let Some(piesa) = &elem.piesa {
-                    mat[i][j].piesa = Some(Piesa::new(piesa.tip, piesa.culoare));
-                    if piesa.tip == TipPiesa::Rege {
-                        if piesa.culoare == Culoare::Alb {
-                            regi.0 = (i, j);
-                        } else {
-                            regi.1 = (i, j);
-                        }
-                    }
-                }
-            }
-        }
-        */
-
         let mut tabla = Tabla {
             mat: layout,
             ..Default::default()

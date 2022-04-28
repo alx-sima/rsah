@@ -1,7 +1,6 @@
-use crate::{
-    tabla::{input::in_board, MatTabla, Pozitie},
-    Mutare, TipMutare,
-};
+use crate::tabla::{input::in_board, MatTabla, Pozitie};
+
+use super::{Mutare, TipMutare};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe `poz`
 pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
@@ -32,10 +31,11 @@ pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec
                         dest: (sumi, sumj),
                     });
                 }
-            } else {rez.push(Mutare {
-                        tip: TipMutare::Normal,
-                        dest: (sumi, sumj),
-                    });
+            } else {
+                rez.push(Mutare {
+                    tip: TipMutare::Normal,
+                    dest: (sumi, sumj),
+                });
             }
         }
     }

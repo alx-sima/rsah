@@ -1,7 +1,6 @@
-use crate::TipMutare;
 use crate::{tabla::input::in_board, Mutare};
 
-use super::miscari::get_poz_rege;
+use super::miscari::{get_poz_rege, TipMutare};
 
 use super::{Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
 
@@ -9,10 +8,13 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 /// Expresia dupa care se (de)codifica o mutare.
-const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e.p.)?$";
+const REGEXPR: &str = r"^([RBNQK])?([a-h1-8])?(x)?([a-h])([1-8])([+#])?( e.p.)?(=[RBNQ])?$";
 
 /// Genereaza [algebraic notation-ul][1]
 /// pentru mutarea de la `src` -> `dest`.
+///
+/// Functia nu genereaza tot stringul mutarii,
+/// precum sahul, matul sau promovarea.
 ///
 /// [1]: https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
 pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, mutare: &Mutare) -> String {
@@ -24,9 +26,9 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, mutare: &Mutare) -> St
     let mut scrie_col = false;
 
     for k in &tabla[mutare.dest.0][mutare.dest.1].afecteaza {
-        // Exista o alta piesa care poate ajunge pe celula destinatie...
+        // Exista o alta piesa care poate ajunge
+        // pe celula destinatie si e de acelasi tip
         if src != *k {
-            // ... si e de acelasi tip
             if let Some(piesa) = &tabla[k.0 as usize][k.1 as usize].piesa {
                 if piesa.tip == p_old.tip && piesa.culoare == p_old.culoare {
                     // Daca sunt pe aceeasi coloana se va afisa linia
@@ -92,7 +94,7 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
     }
 
     // Nu trebuie parcurse capturile, pt ca regexul sigur
-    // nu va returna mai multe (e intre /^/ si /$/)
+    // nu va returna mai multe (e intre /^/ si /$/).
     if let Some(capture) = REGX.captures_iter(mov).next() {
         if let (Some(j), Some(i)) = (capture.get(4), capture.get(5)) {
             // FIXME: urat:(
@@ -195,6 +197,20 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                 (&tabla.at((pozi, pozj)).afecteaza, TipMutare::Normal)
             };
 
+            // Daca miscarea este promovarea unui pion,
+            // se returneaza ce piesa devine.
+            let tip_mutare = if let Some(tip) = capture.get(8) {
+                TipMutare::Promovare(match tip.as_str() {
+                    "=Q" => TipPiesa::Regina,
+                    "=R" => TipPiesa::Tura,
+                    "=B" => TipPiesa::Nebun,
+                    "=N" => TipPiesa::Cal,
+                    _ => unreachable!(),
+                })
+            } else {
+                tip_mutare
+            };
+
             // Parcurge celulele care ataca (pozi, pozj)
             // si cauta piesa:
             //  - de aceeasi culoare cu jucatorul curent;
@@ -268,10 +284,7 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
 mod test {
     use regex::Regex;
 
-    use crate::{
-        tabla::{Culoare, Tabla},
-        TipMutare,
-    };
+    use crate::tabla::{miscari::TipMutare, Culoare, Tabla};
 
     #[test]
     /// Verifica daca regexul recunoaste stringurile cu mutarile.

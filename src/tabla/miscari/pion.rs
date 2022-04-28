@@ -1,7 +1,8 @@
 use crate::{
     tabla::{input::in_board, Culoare, MatTabla, Pozitie, Tabla, TipPiesa},
-    Mutare, TipMutare,
 };
+
+use super::{Mutare, TipMutare};
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru pionul de la (i, j)
 /// TODO: repara mismatch isize-usize pt readability

@@ -1,10 +1,10 @@
 use ggez::graphics::{self, MeshBuilder};
 
-use crate::{State, TipMutare};
+use crate::State;
 
 use super::{
     input::{get_dimensiuni_tabla, get_mouse_square},
-    miscari::get_poz_rege,
+    miscari::{get_poz_rege, TipMutare},
     sah::in_sah,
 };
 
@@ -175,6 +175,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
             TipMutare::Captura | TipMutare::EnPassant(_) => {
                 graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?
             }
+            _ => unreachable!(),
         }
     }
 
