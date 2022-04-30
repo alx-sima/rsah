@@ -3,9 +3,9 @@ use ggez::graphics::{self, MeshBuilder};
 use crate::State;
 
 use super::{
-    input::{get_dimensiuni_tabla, get_mouse_square},
+    input::get_dimensiuni_tabla,
     miscari::{get_poz_rege, TipMutare},
-    sah::in_sah,
+    sah,
 };
 
 /// Deseneaza tabla de joc.
@@ -59,11 +59,6 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
         for j in 0..8 {
             let (i_pies, j_pies) = if state.guest { (7 - i, 7 - j) } else { (i, j) };
 
-            // Nu afisa piesa cand se da hover cu ea.
-            if state.click == Some((i, j)) && get_mouse_square(ctx, state.guest) != Some((i, j)) {
-                continue;
-            }
-
             if let Some(patratel) = &state.tabla.at((i_pies, j_pies)).piesa {
                 let img = graphics::Image::new(
                     ctx,
@@ -83,33 +78,6 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
                             x_ofs + j as f32 * l + 0.07 * l,
                             y_ofs + i as f32 * l + 0.07 * l,
                         ])
-                        .scale([w, h]),
-                )?;
-            }
-        }
-    }
-    // Piesa va da hover cand se muta cu drag & drop.
-    if let Some(click) = state.click {
-        if let Some(mouse) = get_mouse_square(ctx, state.guest) {
-            if click != mouse {
-                let cursor = ggez::input::mouse::position(ctx);
-
-                let piesa = state.tabla.at(click).piesa.as_ref().unwrap();
-                let img = graphics::Image::new(
-                    ctx,
-                    &format!("/images/{:?}/{:?}.png", piesa.culoare, piesa.tip),
-                )?;
-
-                // Cat trebuie scalate piesele
-                // pentru a incapea intr-un patratel.
-                let w = l * 0.85 / img.width() as f32;
-                let h = l * 0.85 / img.height() as f32;
-
-                graphics::draw(
-                    ctx,
-                    &img,
-                    graphics::DrawParam::default()
-                        .dest([cursor.x, cursor.y])
                         .scale([w, h]),
                 )?;
             }
@@ -137,7 +105,7 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
     }
 
     // Se coloreaza cu rosu regele, daca e in sah.
-    if in_sah(&state.tabla, state.turn) {
+    if sah::in_sah(&state.tabla, state.turn) {
         let patrat_rosu = build_square(ctx, l, graphics::Color::from_rgba(255, 0, 0, 170))?;
 
         let (x, y) = get_poz_rege(&state.tabla, state.turn);

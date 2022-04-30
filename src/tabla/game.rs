@@ -21,18 +21,14 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
             // miscarile daca nu e deja o piesa selectata.
             if state.click.is_none() {
                 state.click = Some(click);
-
-                if let Some(piesa) = &state.tabla.at(click).piesa {
-                    if piesa.culoare == state.turn {
-                        state.miscari_disponibile =
-                            miscari::nu_provoaca_sah(&state.tabla, click, state.turn);
-                    }
-                }
             }
         }
-        // Clickul s-a terminat, se face mutarea.
+        // Clickul s-a terminat; daca e pe
+        // acelasi patratel, se face mutarea.
         else if let Some(click_start) = state.click {
-            your_turn(state, click_start, click);
+            if click_start == click {
+                your_turn(state, click);
+            }
             state.click = None;
         }
     }
@@ -73,56 +69,52 @@ fn await_move(state: &mut State) {
 
 /// Handler pt. randul oricarui jucatorul (singleplayer),
 /// sau al celui de pe acest device (multiplayer).
-fn your_turn(state: &mut State, start: Pozitie, end: Pozitie) {
-    // Daca miscarea este valida, efectueaza mutarea.
-    if let Some(mutare) = state.miscari_disponibile.iter().find(|x| x.dest == end) {
-        // Daca nu e o piesa selectata, se ia cea de la inceputul clickului.
-        let src = state.piesa_sel.unwrap_or(start);
+fn your_turn(state: &mut State, pos: Pozitie) {
+    if let Some(src) = state.piesa_sel {
+        // Daca miscarea este valida, efectueaza mutarea.
+        if let Some(mutare) = state.miscari_disponibile.iter().find(|x| x.dest == pos) {
+            let mut notatie = muta(&mut state.tabla, src, mutare);
+            state.tabla.ultima_miscare = Some((src, mutare.dest));
 
-        let mut notatie = muta(&mut state.tabla, src, mutare);
-        state.tabla.ultima_miscare = Some((src, mutare.dest));
+            // Randul urmatorului jucator
+            state.turn.invert();
 
-        // Randul urmatorului jucator
-        state.turn.invert();
+            if let Some(end_state) = sah::verif_continua_jocul(&state.tabla, state.turn) {
+                state.tabla.match_state = end_state;
+            }
 
-        if let Some(end_state) = sah::verif_continua_jocul(&state.tabla, state.turn) {
-            state.tabla.match_state = end_state;
-        }
+            if let MatchState::Mat(_) = state.tabla.match_state {
+                notatie += "#";
+            } else if sah::in_sah(&state.tabla, state.turn) {
+                notatie += "+";
+            }
 
-        if let MatchState::Mat(_) = state.tabla.match_state {
-            notatie += "#";
-        } else if sah::in_sah(&state.tabla, state.turn) {
-            notatie += "+";
-        }
-
-        if let MatchState::Promote(_) = state.tabla.match_state {
-            state.mutare_buf = notatie;
-            return;
-        }
-
-        // Daca nu se asteapta promovarea unui pion, se scrie mutarea.
-        state.tabla.istoric.push(notatie.clone());
-        if let Some(stream) = &mut state.stream {
-            stream.write_all(notatie.as_bytes()).unwrap();
-        }
-
-    // Daca nu este, selecteaza alta piesa (daca e
-    // aceeasi culoare si nu s-a facut drag&drop).
-    } else if start == end {
-        if let Some(piesa) = &state.tabla.at(end).piesa {
-            if piesa.culoare == state.turn {
-                state.piesa_sel = Some(end);
+            if let MatchState::Promote(_) = state.tabla.match_state {
+                state.mutare_buf = notatie;
                 return;
             }
+
+            // Daca nu se asteapta promovarea unui pion, se scrie mutarea.
+            state.tabla.istoric.push(notatie.clone());
+            if let Some(stream) = &mut state.stream {
+                stream.write_all(notatie.as_bytes()).unwrap();
+            }
+        }
+        
+        // Deselecteaza piesa.
+        state.piesa_sel = None;
+        state.miscari_disponibile = vec![];
+    // Daca nu e deja selectata, se
+    // va selecta piesa de sub mouse.
+    } else if let Some(piesa) = &state.tabla.at(pos).piesa {
+        if piesa.culoare == state.turn {
+            state.miscari_disponibile = miscari::nu_provoaca_sah(&state.tabla, pos, state.turn);
+            state.piesa_sel = Some(pos);
         }
     }
-
-    // Deselecteaza piesa.
-    state.piesa_sel = None;
-    state.miscari_disponibile = vec![];
 }
 
-/// Muta piesa de pe *src_poz* pe *dest_poz*,
+/// Muta piesa de pe `src_poz` pe `dest_poz`,
 /// recalculeaza noile pozitii atacate,
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
