@@ -9,7 +9,7 @@ use ggez_egui::EguiContext;
 use crate::{
     tabla::{
         editor,
-        game::amplaseaza,
+        game::set_piesa,
         generare,
         input::get_dimensiuni_tabla,
         sah::{in_sah, verif_continua_jocul},
@@ -194,7 +194,7 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context
                             let mut culoare = state.turn;
                             culoare.invert();
 
-                            amplaseaza(&mut state.tabla, poz, *p, culoare);
+                            set_piesa(&mut state.tabla, poz, Some(*p), culoare);
                             let mutare = format!("{}={}", state.mutare_buf, p);
 
                             // Se scrie mutarea

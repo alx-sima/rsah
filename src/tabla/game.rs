@@ -52,7 +52,7 @@ fn await_move(state: &mut State) {
             // Daca pionul este promovat, se updateaza aici.
             if let TipMutare::Promovare(piesa) = mutare.tip {
                 state.tabla.get(mutare.dest).piesa = Some(Piesa::new(piesa, state.turn));
-                amplaseaza(&mut state.tabla, mutare.dest, piesa, state.turn);
+                set_piesa(&mut state.tabla, mutare.dest, Some(piesa), state.turn);
                 state.tabla.match_state = MatchState::Playing;
             }
 
@@ -100,7 +100,7 @@ fn your_turn(state: &mut State, pos: Pozitie) {
                 stream.write_all(notatie.as_bytes()).unwrap();
             }
         }
-        
+
         // Deselecteaza piesa.
         state.piesa_sel = None;
         state.miscari_disponibile = vec![];
@@ -135,9 +135,11 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     // Daca pionul se muta pe diagonala fara sa ia o piesa, e en passant.
     if piesa.tip == TipPiesa::Pion {
         if let TipMutare::EnPassant(victima) = mutare.tip {
-            tabla.get(mutare.dest).piesa = tabla.at(victima).piesa.clone();
-
-            tabla.mat[victima.0][victima.1].piesa = None;
+            // Piesa 'victima' este mutata 1 patrat 
+            // deasupra, pe pozitia unde va fi 
+            // mutat pionul 'agresor'.
+            set_piesa(tabla, mutare.dest, Some(TipPiesa::Pion), culoare);
+            set_piesa(tabla, victima, None, culoare);
         }
     }
 
@@ -213,28 +215,42 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     notatie
 }
 
-/// Amplaseaza `piesa` de `culoare` pe pozitia
-/// `poz`, resetand celulele influentate.
+///  - Some(`piesa`) => Amplaseaza `piesa` de
+/// `culoare` pe pozitia `poz`, resetand
+/// celulele influentate.
+///
+///  - `None` => Sterge `poz` din tabla,
+/// resetand celulele influentate.
+///
 /// Nu verifica rocade sau en passant, fiind
 /// intentionata doar pt promovarea pionului.
-pub(crate) fn amplaseaza(tabla: &mut Tabla, poz: Pozitie, piesa: TipPiesa, culoare: Culoare) {
-    // Vechea pozitie a piesei
-    let p_old = tabla.at(poz).clone();
+pub(crate) fn set_piesa(
+    tabla: &mut Tabla,
+    poz: Pozitie,
+    piesa: Option<TipPiesa>,
+    culoare: Culoare,
+) {
+    // Patratul de modificat.
+    let patr = tabla.at(poz).clone();
 
-    let mut pcs_to_reset = p_old.afecteaza;
+    let mut pcs_to_reset = patr.afecteaza;
     pcs_to_reset.push(poz);
 
     for i in &pcs_to_reset {
         miscari::clear_influenta(tabla, *i);
     }
 
-    tabla.get(poz).piesa = Some(Piesa {
-        mutat: true,
-        tip: piesa,
-        culoare,
-        // FIXME:
-        pozitii_anterioare: vec![],
-    });
+    if let Some(piesa) = piesa {
+        tabla.get(poz).piesa = Some(Piesa {
+            mutat: true,
+            tip: piesa,
+            culoare,
+            // FIXME:
+            pozitii_anterioare: vec![],
+        });
+    } else {
+        tabla.get(poz).piesa = None;
+    }
 
     for i in pcs_to_reset {
         miscari::set_influenta(tabla, i);
