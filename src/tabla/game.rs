@@ -14,7 +14,7 @@ pub(crate) fn turn_handler(ctx: &mut ggez::Context, state: &mut State) {
     if state.game_state == GameState::Multiplayer && (state.turn == Culoare::Negru) != state.guest {
         await_move(state);
 
-    // Clickul se ia in considerare doar daca este in interiorul tablei.
+        // Clickul se ia in considerare doar daca este in interiorul tablei.
     } else if let Some(click) = input::get_mouse_square(ctx, state.guest) {
         if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
             // Clickul abia a fost inceput, asa ca se cauta
@@ -44,10 +44,8 @@ fn await_move(state: &mut State) {
             // Mutarea este adaugata in istoric
             state.tabla.istoric.push(notatie.to_string());
 
-            // FIXME:
             muta(&mut state.tabla, src, &mutare);
             state.tabla.ultima_miscare = Some((src, mutare.dest));
-            println!("{:?}", mutare);
 
             // Daca pionul este promovat, se updateaza aici.
             if let TipMutare::Promovare(piesa) = mutare.tip {
@@ -58,9 +56,6 @@ fn await_move(state: &mut State) {
 
             // Randul urmatorului jucator
             state.turn.invert();
-
-            // FIXME: ????
-            sah::verif_continua_jocul(&state.tabla, state.turn);
         } else {
             println!("{notatie}");
         }
@@ -104,8 +99,8 @@ fn your_turn(state: &mut State, pos: Pozitie) {
         // Deselecteaza piesa.
         state.piesa_sel = None;
         state.miscari_disponibile = vec![];
-    // Daca nu e deja selectata, se
-    // va selecta piesa de sub mouse.
+        // Daca nu e deja selectata, se
+        // va selecta piesa de sub mouse.
     } else if let Some(piesa) = &state.tabla.at(pos).piesa {
         if piesa.culoare == state.turn {
             state.miscari_disponibile = miscari::nu_provoaca_sah(&state.tabla, pos, state.turn);
@@ -135,8 +130,8 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     // Daca pionul se muta pe diagonala fara sa ia o piesa, e en passant.
     if piesa.tip == TipPiesa::Pion {
         if let TipMutare::EnPassant(victima) = mutare.tip {
-            // Piesa 'victima' este mutata 1 patrat 
-            // deasupra, pe pozitia unde va fi 
+            // Piesa 'victima' este mutata 1 patrat
+            // deasupra, pe pozitia unde va fi
             // mutat pionul 'agresor'.
             set_piesa(tabla, mutare.dest, Some(TipPiesa::Pion), culoare);
             set_piesa(tabla, victima, None, culoare);
@@ -242,11 +237,10 @@ pub(crate) fn set_piesa(
 
     if let Some(piesa) = piesa {
         tabla.get(poz).piesa = Some(Piesa {
+            pozitii_anterioare: vec![],
             mutat: true,
             tip: piesa,
             culoare,
-            // FIXME:
-            pozitii_anterioare: vec![],
         });
     } else {
         tabla.get(poz).piesa = None;

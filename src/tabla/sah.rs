@@ -34,8 +34,6 @@ pub(crate) fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
             return piesa.culoare != culoare;
         }
         unreachable!()
-        // TODO: verif filmare 26.04 ora 1:26 am (unknown)
-        // dupa promovare? cred ca stiu ce e
     })
 }
 
@@ -110,8 +108,6 @@ fn threefold(tabla: &Tabla) -> bool {
 
 /// Verifica daca in ultimele 50 de miscari
 /// (ale fiecarui jucator) au fost capturate piese.
-///
-/// TODO: testeaza
 fn capturi_in_ult_50(tabla: &Tabla) -> bool {
     let istoric = &tabla.istoric;
 

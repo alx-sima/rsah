@@ -48,19 +48,23 @@ pub(crate) struct Patratel {
 pub(crate) struct Piesa {
     /// ce piesa e
     pub(crate) tip: TipPiesa,
-    /// Oare?
+    /// Culoarea piesei.
     pub(crate) culoare: Culoare,
     #[serde(skip)]
     /// daca piesa a mai fost mutata
     /// (pt rocada, en passant etc.)
-    /// DEPRECATED (probabil) pt ca ne vom putea uita in pozitii anterioare
+    ///
+    /// Nu este (de)serializat.
     pub(crate) mutat: bool,
     #[serde(skip)]
     /// Pozitiile pe care piesa a fost inainte
+    ///
+    /// Nu este (de)serializat.
     pub(crate) pozitii_anterioare: Vec<Pozitie>,
 }
 
 impl Piesa {
+    /// Creeaza o noua piesa cu `tip` si `culoare`.
     pub(crate) fn new(tip: TipPiesa, culoare: Culoare) -> Piesa {
         Piesa {
             pozitii_anterioare: vec![],
@@ -75,9 +79,9 @@ impl Piesa {
 /// folosita si pentru a retine al cui este randul sa mute
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Culoare {
-    /// Culoarea alba.
+    /// Jucatorul alb.
     Alb,
-    /// Culoarea neagra.
+    /// Jucatorul negru.
     Negru,
 }
 
@@ -94,11 +98,17 @@ impl Culoare {
 /// Tipul unei piese.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum TipPiesa {
+    /// Pionul (P)
     Pion,
+    /// Tura (R)
     Tura,
+    /// Calul (N)
     Cal,
+    /// Nebunul (B)
     Nebun,
+    /// Regina (Q)
     Regina,
+    /// Regele (K)
     Rege,
 }
 

@@ -1,12 +1,11 @@
-use crate::tabla::{input::in_board, MatTabla, Pozitie};
+use crate::tabla::{input, MatTabla, Pozitie};
 
-use super::{Mutare, TipMutare};
+use super::Mutare;
 
 /// Genereaza o lista cu miscarile posibile (linie, coloana) pentru calul de pe `poz`
-pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
+pub(super) fn get(tabla: &MatTabla, poz: Pozitie, check_all: bool) -> Vec<Mutare> {
     let mut rez = vec![];
 
-    // FIXME:
     let (ui, uj) = poz;
     let i = ui as i32;
     let j = uj as i32;
@@ -17,25 +16,12 @@ pub(super) fn get(tabla: &MatTabla, poz: Pozitie, tot_ce_afecteaza: bool) -> Vec
     let dj = [1, -1, 2, -2, 2, -2, 1, -1];
 
     for k in 0..8 {
-        if in_board(i + di[k], j + dj[k]) {
+        if input::in_board(i + di[k], j + dj[k]) {
             let sumi = (i + di[k]) as usize;
             let sumj = (j + dj[k]) as usize;
 
-            if tabla[sumi][sumj].piesa.is_some() {
-                if tabla[ui][uj].piesa.clone().unwrap().culoare
-                    != tabla[sumi][sumj].piesa.clone().unwrap().culoare
-                    || tot_ce_afecteaza
-                {
-                    rez.push(Mutare {
-                        tip: TipMutare::Captura,
-                        dest: (sumi, sumj),
-                    });
-                }
-            } else {
-                rez.push(Mutare {
-                    tip: TipMutare::Normal,
-                    dest: (sumi, sumj),
-                });
+            if let Some(mutare) = super::mutare_imediata(tabla, poz, (sumi, sumj), check_all) {
+                rez.push(mutare);
             }
         }
     }

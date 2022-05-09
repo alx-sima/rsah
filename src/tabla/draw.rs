@@ -8,13 +8,36 @@ use super::{
     sah,
 };
 
+/// Valorile returnate de `get_dimensiuni_tabla`, pt prescurtare.
+type Dimensiuni = (f32, f32, f32);
+/// Valori RGBA
+type RGBA = (u8, u8, u8, u8);
+/// Valori RGB
+type RGB = (u8, u8, u8);
+
+/// Culoarea patratelor albe.
+const WHITE: RGB = (189, 114, 49);
+/// Culoarea patratelor negre.
+const BLACK: RGB = (102, 52, 9);
+/// Culoarea cu care se afiseaza ultima miscare.
+const LAST_MOVE: RGBA = (255, 255, 0, 90);
+/// Culoarea cu care se arata ca regele e in sah.
+const CHESS: RGBA = (255, 0, 0, 170);
+/// Culoarea cerculetelor care 
+/// arata unde se pot muta piesele.
+const MOVE: RGBA = (0, 0, 0, 127);
+/// Culoarea cu care se arata ca o piesa e selectata.
+const SELECTED: RGBA = (255, 255, 0, 90);
+
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
-    let white = graphics::Color::from_rgb(189, 114, 49);
-    let black = graphics::Color::from_rgb(102, 52, 9);
+    let white = graphics::Color::from(WHITE);
+    let black = graphics::Color::from(BLACK);
 
     let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
-    // TODO: mesh mai scurt?
+
+    // Un careu 2x2, care va fi desenat de 16 ori pt a da
+    // de mai putine ori draw decat la 64 de careuri 1x1.
     let mesh = MeshBuilder::new()
         .rectangle(
             graphics::DrawMode::fill(),
@@ -44,7 +67,7 @@ pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {
             graphics::draw(
                 ctx,
                 &mesh,
-                ([x_ofs + j as f32 * 2.0 * l, y_ofs + i as f32 * 2.0 * l],),
+                ([x_ofs + j as f32 * 2.0 * l, y_ofs + i as f32 * 2.0 * l], ),
             )?;
         }
     }
@@ -89,38 +112,55 @@ pub(crate) fn pieces(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
 
 /// Afiseaza ultima miscare, daca regele e in sah, piesa
 /// selectata si miscarile disponibile ale acesteia.
-// TODO: sparge in mai multe functii
 pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult {
-    let (l, x_ofs, y_ofs) = get_dimensiuni_tabla(ctx);
-    let guest = state.guest;
+    let dim = get_dimensiuni_tabla(ctx);
 
-    // Se coloreaza ultima miscare
+    draw_last_move(state, ctx, dim)?;
+    draw_sah(state, ctx, dim)?;
+    draw_moves(state, ctx, dim)?;
+    draw_sel(state, ctx, dim)
+}
+
+/// Se afiseaza ultima miscare.
+fn draw_last_move(state: &State, ctx: &mut ggez::Context, dim: Dimensiuni) -> ggez::GameResult {
     if let Some((src, dest)) = state.tabla.ultima_miscare {
-        let patrat_albastru = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
+        let (l, x_ofs, y_ofs) = dim;
+        let patrat_albastru = build_square(ctx, l, graphics::Color::from(LAST_MOVE))?;
 
-        let (x_src, y_src) = adjust_for_multiplayer(src.1, src.0, l, guest);
-        let (x_dest, y_dest) = adjust_for_multiplayer(dest.1, dest.0, l, guest);
-        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_src, y_ofs + y_src],))?;
-        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_dest, y_ofs + y_dest],))?;
+        let (x_src, y_src) = adjust_for_multiplayer(src.1, src.0, l, state.guest);
+        let (x_dest, y_dest) = adjust_for_multiplayer(dest.1, dest.0, l, state.guest);
+        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_src, y_ofs + y_src], ))?;
+        graphics::draw(ctx, &patrat_albastru, ([x_ofs + x_dest, y_ofs + y_dest], ))?;
     }
 
-    // Se coloreaza cu rosu regele, daca e in sah.
+    Ok(())
+}
+
+/// Se coloreaza regele daca e in sah.
+fn draw_sah(state: &State, ctx: &mut ggez::Context, dim: Dimensiuni) -> ggez::GameResult {
     if sah::in_sah(&state.tabla, state.turn) {
-        let patrat_rosu = build_square(ctx, l, graphics::Color::from_rgba(255, 0, 0, 170))?;
+        let (l, x_ofs, y_ofs) = dim;
+        let patrat_rosu = build_square(ctx, l, graphics::Color::from(CHESS))?;
 
         let (x, y) = get_poz_rege(&state.tabla, state.turn);
-        let (x, y) = adjust_for_multiplayer(y, x, l, guest);
-        graphics::draw(ctx, &patrat_rosu, ([x_ofs + x, y_ofs + y],))?;
+        let (x, y) = adjust_for_multiplayer(y, x, l, state.guest);
+        graphics::draw(ctx, &patrat_rosu, ([x_ofs + x, y_ofs + y], ))?;
     }
 
-    // Se afiseaza mutarile posibile.
+    Ok(())
+}
+
+/// Se afiseaza mutarile posibile.
+fn draw_moves(state: &State, ctx: &mut ggez::Context, dim: Dimensiuni) -> ggez::GameResult {
+    let (l, x_ofs, y_ofs) = dim;
+
     let patrat_galben = MeshBuilder::new()
         .circle(
             graphics::DrawMode::fill(),
             [l / 2.0, l / 2.0],
             l / 8.0,
             0.01,
-            graphics::Color::from_rgba(0, 0, 0, 127),
+            graphics::Color::from(MOVE),
         )?
         .build(ctx)?;
     let patrat_galben_gol = MeshBuilder::new()
@@ -129,29 +169,39 @@ pub(crate) fn attack(state: &State, ctx: &mut ggez::Context) -> ggez::GameResult
             [l / 2.0, l / 2.0],
             l / 2.0,
             0.01,
-            graphics::Color::from_rgba(0, 0, 0, 127),
+            graphics::Color::from(MOVE),
         )?
         .build(ctx)?;
-    let patrat_verde = build_square(ctx, l, graphics::Color::from_rgba(255, 255, 0, 90))?;
 
     for mutare in &state.miscari_disponibile {
-        let (x, y) = adjust_for_multiplayer(mutare.dest.1, mutare.dest.0, l, guest);
+        let (x, y) = adjust_for_multiplayer(mutare.dest.1, mutare.dest.0, l, state.guest);
         match mutare.tip {
+            // Daca nu se ia o piesa, va aparea un punctulet pe patratele disponibile.
             TipMutare::Normal | TipMutare::Rocada(_) => {
-                graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y],))?
+                graphics::draw(ctx, &patrat_galben, ([x_ofs + x, y_ofs + y], ))?
             }
+            // Daca se ia o piesa, va aparea un cerculet in jurul acesteia.
             TipMutare::Captura | TipMutare::EnPassant(_) => {
-                graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y],))?
+                graphics::draw(ctx, &patrat_galben_gol, ([x_ofs + x, y_ofs + y], ))?
             }
             _ => unreachable!(),
         }
     }
+    
+    Ok(())
+}
 
+/// Se afiseaza piesa selectata.
+fn draw_sel(state: &State, ctx: &mut ggez::Context, dim: Dimensiuni) -> ggez::GameResult {
     // Se coloreaza piesa selectata.
     if let Some((x, y)) = state.piesa_sel {
-        let (x, y) = adjust_for_multiplayer(y, x, l, guest);
-        graphics::draw(ctx, &patrat_verde, ([x_ofs + x, y_ofs + y],))?;
+        let (l, x_ofs, y_ofs) = dim;
+        let patrat_verde = build_square(ctx, l, graphics::Color::from(SELECTED))?;
+
+        let (x, y) = adjust_for_multiplayer(y, x, l, state.guest);
+        graphics::draw(ctx, &patrat_verde, ([x_ofs + x, y_ofs + y], ))?;
     }
+
     Ok(())
 }
 

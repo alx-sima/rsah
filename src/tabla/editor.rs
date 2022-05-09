@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 pub(crate) fn editor_handler(ctx: &mut ggez::Context, tabla: &mut MatTabla, piesa_sel: TipPiesa) {
     // la un click, amplaseaza piesa alba
     if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
-        // reversed va fi mereu false pt ca nu esti masochist sa editezi tabla invers
+        // reversed va fi mereu false
         if let Some((i,j )) = input::get_mouse_square(ctx, false) {
             place(tabla, i, j, piesa_sel, Culoare::Alb);
         }

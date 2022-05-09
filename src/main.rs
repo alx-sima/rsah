@@ -10,7 +10,7 @@ use ggez::{
 };
 use ggez_egui::EguiBackend;
 
-use tabla::{draw, Culoare, Pozitie, Tabla, TipPiesa, miscari::Mutare};
+use tabla::{draw, miscari::Mutare, Culoare, Pozitie, Tabla, TipPiesa};
 
 /// meniurile grafice pentru a selecta
 /// jocul, editorul, conectare multiplayer
@@ -20,11 +20,18 @@ mod gui;
 mod tabla;
 
 #[derive(PartialEq)]
+/// State-ul in care se afla jocul
+/// (= ce ecran trebuie afisat).
 enum GameState {
+    /// Ecranul principal.
     MainMenu,
+    /// Ecranul de joc.
     Game,
-    Editor,
+    /// Ecranul de joc (insa
+    /// meciul este online).
     Multiplayer,
+    /// Editorul de layouturi.
+    Editor,
 }
 
 /// Variabilele globale ale jocului
@@ -54,8 +61,10 @@ struct State {
     piesa_sel: Option<Pozitie>,
 
     // ================================ Editor =================================
-    /// (doar pt editor) Piesa care se va pune la click.
+    /// Piesa care se va pune la click.
     piesa_sel_editor: TipPiesa,
+    /// Numele fisierului in care se
+    /// va salva layoutul editat.
     ed_save_name: String,
 
     // ============================== Multiplayer ==============================
@@ -69,21 +78,29 @@ struct State {
     /// Daca e *true*, meciul se joaca pe alt dispozitiv,
     /// piesele negre vor aparea in josul tablei
     guest: bool,
+    /// Buffer in care se salveaza temporar notatia
+    /// mutarii cat timp se asteapta promovarea unui
+    /// pion, pentru a fi trimisa cu tot cu piesa
+    /// in care e transformat pionul.
     mutare_buf: String,
 }
 
-
 #[derive(PartialEq)]
+/// Posibilele layouturi de piese.
 enum GameMode {
     /// Aranjamentul standard.
     Clasic,
     /// Piese generate aleatoriu
     /// cu generare::new_random().
     Aleatoriu,
+    /// Piesele vor fi aranjate dupa
+    /// layoutul din fisierul continut.
     Custom(String),
 }
 
+/// Cum va fi afisat layoutul in meniul de selectie.
 impl fmt::Display for GameMode {
+    /// Formats the value using the given formatter.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             GameMode::Clasic => write!(f, "Clasic"),
@@ -93,8 +110,9 @@ impl fmt::Display for GameMode {
     }
 }
 
+/// Valorile initiale ale variabilelor globale.
 impl Default for State {
-    /// Valorile initiale ale variabilelor globale.
+    /// Returns the "default value" of a type.
     fn default() -> Self {
         State {
             mutare_buf: String::new(),
@@ -117,9 +135,10 @@ impl Default for State {
     }
 }
 
-impl ggez::event::EventHandler<ggez::GameError> for State {
-    /// Logica jcocului.
-    fn update(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
+/// Traitul necesar ca [State] sa fie rulat de libraria [ggez].
+impl event::EventHandler<ggez::GameError> for State {
+    /// Logica jocului.
+    fn update(&mut self, ctx: &mut Context) -> ggez::GameResult {
         let egui_ctx = self.egui_backend.ctx();
 
         match self.game_state {
@@ -137,11 +156,12 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
                 gui::main_menu(self, &egui_ctx, ctx);
             }
         }
+
         Ok(())
     }
 
     /// Grafica jocului.
-    fn draw(&mut self, ctx: &mut ggez::Context) -> ggez::GameResult {
+    fn draw(&mut self, ctx: &mut Context) -> ggez::GameResult {
         graphics::clear(ctx, graphics::Color::BLACK);
 
         if self.game_state != GameState::MainMenu {
@@ -159,19 +179,30 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
     // =========================================================================
     // ======================= Layere de compatibilitate =======================
 
-    /// Updateaza rezolutia logica a ecranului cand se schimba cea fizica,
-    /// altfel imaginile ar fi desenate scalate.
-    fn resize_event(&mut self, ctx: &mut ggez::Context, width: f32, height: f32) {
-        let screen_rect = graphics::Rect::new(0.0, 0.0, width, height);
-        graphics::set_screen_coordinates(ctx, screen_rect).unwrap();
+    // ================================= Mouse =================================
+
+    /// Captureaza inceperea clickului.
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
+        self.egui_backend.input.mouse_button_down_event(button);
+    }
+
+    /// Captureaza cand se termina clickul.
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+        self.egui_backend.input.mouse_button_up_event(button);
+    }
+
+    /// Captureaza miscarea mouseului.
+    fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, _dx: f32, _dy: f32) {
+        self.egui_backend.input.mouse_motion_event(x, y);
     }
 
     // =============================== Tastatura ===============================
-
-    /// Pt. ca egui sa captureze tastatura.
-    fn text_input_event(&mut self, _ctx: &mut Context, ch: char) {
-        self.egui_backend.input.text_input_event(ch);
-    }
 
     /// Pt. tastele care nu corespund cu caractere.
     fn key_down_event(
@@ -184,28 +215,22 @@ impl ggez::event::EventHandler<ggez::GameError> for State {
         self.egui_backend.input.key_down_event(keycode, keymods);
     }
 
-    // ================================= Mouse =================================
-
-    fn mouse_button_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        button: MouseButton,
-        _x: f32,
-        _y: f32,
-    ) {
-        self.egui_backend.input.mouse_button_down_event(button);
+    /// Pt. ca egui sa captureze tastatura.
+    fn text_input_event(&mut self, _ctx: &mut Context, ch: char) {
+        self.egui_backend.input.text_input_event(ch);
     }
 
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
-        self.egui_backend.input.mouse_button_up_event(button);
-    }
+    // =============================== Rezolutie ===============================
 
-    fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32, _dx: f32, _dy: f32) {
-        self.egui_backend.input.mouse_motion_event(x, y);
+    /// Updateaza rezolutia logica a ecranului cand se schimba cea fizica,
+    /// altfel imaginile ar fi desenate scalate.
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+        let screen_rect = graphics::Rect::new(0.0, 0.0, width, height);
+        graphics::set_screen_coordinates(ctx, screen_rect).unwrap();
     }
 }
 
-/// Se configureaza aplicatia inainte de a o rula
+/// Se configureaza aplicatia inainte de a o rula.
 fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
     let setup = conf::WindowSetup::default()
         .title("Chess")
@@ -215,7 +240,7 @@ fn build_context() -> ggez::GameResult<(Context, EventLoop<()>)> {
         .resizable(true);
 
     let c = conf::Conf::new();
-    ggez::ContextBuilder::new("rsah", "bamse")
+    ggez::ContextBuilder::new("rsah", "rsah")
         .default_conf(c)
         .window_setup(setup)
         .window_mode(mode)

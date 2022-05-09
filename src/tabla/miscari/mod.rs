@@ -1,6 +1,4 @@
-use super::{
-    game::muta, input::in_board, sah::in_sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa,
-};
+use super::{game, input, sah, Culoare, MatTabla, Pozitie, Tabla, TipPiesa};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Mutare {
@@ -30,76 +28,32 @@ pub(crate) enum TipMutare {
     Promovare(TipPiesa),
 }
 
-/// Returneaza o lista cu pozitiile in care poate ajunge un patratel de la (i, j)
-/// deplasat liniar, in functie de versori
-fn cautare_in_linie(
-    tabla: &MatTabla,
-    poz: Pozitie,
-    versori: &[(i32, i32)],
-    tot_ce_afecteaza: bool,
-) -> Vec<Mutare> {
-    let i = poz.0 as i32;
-    let j = poz.1 as i32;
-
-    let mut rez = vec![];
-
-    for k in versori {
-        let mut dist = 1;
-        while in_board(i + k.0 * dist, j + k.1 * dist) {
-            let sumi = (i + k.0 * dist) as usize;
-            let sumj = (j + k.1 * dist) as usize;
-
-            if let Some(patrat_atacat) = &tabla[sumi][sumj].piesa {
-                if tabla[i as usize][j as usize].piesa.clone().unwrap().culoare
-                    != patrat_atacat.culoare
-                    || tot_ce_afecteaza
-                {
-                    rez.push(Mutare {
-                        tip: TipMutare::Captura,
-                        dest: (sumi, sumj),
-                    });
-                }
-                break;
-            } else {
-                rez.push(Mutare {
-                    tip: TipMutare::Normal,
-                    dest: (sumi, sumj),
-                });
-            }
-            dist += 1;
-        }
-    }
-    rez
-}
-
 /// Returneaza o `lista de (linie, coloana)` cu
 /// toate patratele in care se poate muta `piesa`
 /// (**include piesele pe care le ataca**).
 ///
-/// Daca `tot_ce_afecteaza` e setat, se returneaza **toate**
+/// Daca `check_all` e setat, se returneaza **toate**
 /// celulele ale caror modificare ar putea afecta piesa.
-pub(crate) fn get_miscari(tabla: &Tabla, piesa: Pozitie, tot_ce_afecteaza: bool) -> Vec<Mutare> {
-    let (i, j) = piesa;
-
-    if let Some(p) = &tabla.at((i, j)).piesa {
+pub(crate) fn get_miscari(tabla: &Tabla, poz: Pozitie, check_all: bool) -> Vec<Mutare> {
+    if let Some(p) = &tabla.at(poz).piesa {
         match p.tip {
             // Pionul poate sa avanseze sau sa captureze pe diagonala
             TipPiesa::Pion => [
-                pion::get(&tabla.mat, i as i32, j as i32, tot_ce_afecteaza),
-                pion::ataca(tabla, (i, j), true),
+                pion::get(&tabla.mat, poz, check_all),
+                pion::ataca(tabla, poz, true),
             ]
             .concat(),
-            TipPiesa::Tura => tura::get(&tabla.mat, piesa, tot_ce_afecteaza),
-            TipPiesa::Cal => cal::get(&tabla.mat, piesa, tot_ce_afecteaza),
-            TipPiesa::Nebun => nebun::get(&tabla.mat, piesa, tot_ce_afecteaza),
-            TipPiesa::Regina => regina::get(&tabla.mat, piesa, tot_ce_afecteaza),
+            TipPiesa::Tura => tura::get(&tabla.mat, poz, check_all),
+            TipPiesa::Cal => cal::get(&tabla.mat, poz, check_all),
+            TipPiesa::Nebun => nebun::get(&tabla.mat, poz, check_all),
+            TipPiesa::Regina => regina::get(&tabla.mat, poz, check_all),
             TipPiesa::Rege => [
-                rege::rocada(tabla, i, j),
-                rege::get(&tabla.mat, i as i32, j as i32, tot_ce_afecteaza),
+                rege::rocada(tabla, poz),
+                rege::get(&tabla.mat, poz, check_all),
             ]
             .concat(),
         }
-    // Daca patratul e gol, returneaza o lista goala
+        // Daca patratul e gol, returneaza o lista goala
     } else {
         vec![]
     }
@@ -108,7 +62,7 @@ pub(crate) fn get_miscari(tabla: &Tabla, piesa: Pozitie, tot_ce_afecteaza: bool)
 /// Pentru piesa de la (i, j) returneaza o lista cu toate pozitiile pe care le ataca.
 /// Daca piesa nu exista, se returneaza un vector gol.
 pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<Mutare> {
-    if !in_board(i, j) {
+    if !input::in_board(i, j) {
         return vec![];
     }
 
@@ -120,11 +74,11 @@ pub(crate) fn get_atacat(tabla: &Tabla, i: i32, j: i32) -> Vec<Mutare> {
             TipPiesa::Pion => pion::ataca(tabla, (i, j), false),
             // Regele ataca doar patratele din jurul lui,
             // iar get_miscari ar fi dat si pozitiile pentru rocada.
-            TipPiesa::Rege => rege::get(&tabla.mat, i as i32, j as i32, false),
+            TipPiesa::Rege => rege::get(&tabla.mat, (i, j), false),
             // Restul pieselor ataca toate pozitiile pe care se pot misca.
             _ => get_miscari(tabla, (i, j), false),
         }
-    // Daca patratul e gol, returneaza o lista goala
+        // Daca patratul e gol, returneaza o lista goala
     } else {
         vec![]
     }
@@ -158,8 +112,8 @@ pub(crate) fn nu_provoaca_sah(tabla: &Tabla, piesa: Pozitie, culoare: Culoare) -
         // Muta piesa pe pozitia de verificat, pentru a vedea daca pune regele in sah.
         let mut dummy = tabla.clone();
 
-        muta(&mut dummy, piesa, &mutare);
-        if !in_sah(&dummy, culoare) {
+        game::muta(&mut dummy, piesa, &mutare);
+        if !sah::in_sah(&dummy, culoare) {
             rez.push(mutare);
         }
     }
@@ -194,7 +148,6 @@ pub(crate) fn clear_influenta(tabla: &mut Tabla, poz: Pozitie) {
 }
 
 /// Returneaza pozitia regelui de culoare *culoare*.
-/// DEPRECATED: e doar pt ca a fost mai usor decat sa retinem pozitia regelui intr-un alt field.
 pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> Pozitie {
     if culoare == Culoare::Alb {
         tabla.regi.0
@@ -203,9 +156,82 @@ pub(crate) fn get_poz_rege(tabla: &Tabla, culoare: Culoare) -> Pozitie {
     }
 }
 
+/// Returneaza mutarea piesei de la `src` la `dest`
+/// sau `None` (daca nu se poate face).
+fn mutare_imediata(
+    tabla: &MatTabla,
+    src: Pozitie,
+    dest: Pozitie,
+    check_all: bool,
+) -> Option<Mutare> {
+    if let Some(inamic) = &tabla[dest.0][dest.1].piesa {
+        if tabla[src.0][src.1].piesa.clone().unwrap().culoare != inamic.culoare || check_all {
+            Some(Mutare {
+                tip: TipMutare::Captura,
+                dest,
+            })
+        } else {
+            None
+        }
+    } else {
+        Some(Mutare {
+            tip: TipMutare::Normal,
+            dest,
+        })
+    }
+}
+
+/// Returneaza o lista cu pozitiile in care poate ajunge un
+/// patratel de la `poz` deplasat liniar, in functie de `versori`.
+fn cautare_in_linie(
+    tabla: &MatTabla,
+    poz: Pozitie,
+    versori: &[(i32, i32)],
+    check_all: bool,
+) -> Vec<Mutare> {
+    let i = poz.0 as i32;
+    let j = poz.1 as i32;
+
+    let mut rez = vec![];
+
+    for k in versori {
+        let mut dist = 1;
+        while input::in_board(i + k.0 * dist, j + k.1 * dist) {
+            let sumi = (i + k.0 * dist) as usize;
+            let sumj = (j + k.1 * dist) as usize;
+
+            if let Some(patrat_atacat) = &tabla[sumi][sumj].piesa {
+                if tabla[i as usize][j as usize].piesa.clone().unwrap().culoare
+                    != patrat_atacat.culoare
+                    || check_all
+                {
+                    rez.push(Mutare {
+                        tip: TipMutare::Captura,
+                        dest: (sumi, sumj),
+                    });
+                }
+                break;
+            } else {
+                rez.push(Mutare {
+                    tip: TipMutare::Normal,
+                    dest: (sumi, sumj),
+                });
+            }
+            dist += 1;
+        }
+    }
+    rez
+}
+
+/// Miscarile calului.
 mod cal;
+/// Miscarile nebunului.
 mod nebun;
+/// Miscarile pionului.
 mod pion;
+/// Miscarile regelui.
 mod rege;
+/// Miscarile reginei.
 mod regina;
+///  Miscarile turei.
 mod tura;

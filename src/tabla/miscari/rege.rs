@@ -1,37 +1,24 @@
 use crate::tabla::{
-    input::in_board,
+    input,
     miscari::{Mutare, TipMutare},
-    sah::e_atacat,
-    MatTabla, Tabla, TipPiesa,
+    sah, MatTabla, Tabla, TipPiesa,
 };
+use crate::Pozitie;
 
-/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la (i, j)
-pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> Vec<Mutare> {
+/// Genereaza o lista cu miscarile posibile (linie, coloana) pentru regele de la `poz`.
+pub(super) fn get(tabla: &MatTabla, poz: Pozitie, check_all: bool) -> Vec<Mutare> {
     let mut rez = vec![];
-    let ui = i as usize;
-    let uj = j as usize;
 
     for di in -1..=1 {
         for dj in -1..=1 {
-            if in_board(i + di, j + dj) {
-                let sumi = (i + di) as usize;
-                let sumj = (j + dj) as usize;
+            let i = poz.0 as i32 + di;
+            let j = poz.1 as i32 + dj;
+            if input::in_board(i, j) {
+                let ui = i as usize;
+                let uj = j as usize;
 
-                if tabla[sumi][sumj].piesa.is_some() {
-                    if tabla[ui][uj].piesa.clone().unwrap().culoare
-                        != tabla[sumi][sumj].piesa.clone().unwrap().culoare
-                        || tot_ce_afecteaza
-                    {
-                        rez.push(Mutare {
-                            tip: TipMutare::Captura,
-                            dest: (sumi, sumj),
-                        });
-                    }
-                } else {
-                    rez.push(Mutare {
-                        tip: TipMutare::Normal,
-                        dest: (sumi, sumj),
-                    });
+                if let Some(mutare) = super::mutare_imediata(tabla, poz, (ui, uj), check_all) {
+                    rez.push(mutare);
                 }
             }
         }
@@ -50,21 +37,23 @@ pub(super) fn get(tabla: &MatTabla, i: i32, j: i32, tot_ce_afecteaza: bool) -> V
 /// sau *3 la dreapta* (rocada mica) de rege.
 /// Nu conteaza pozitia efectiva, ci doar distanta,
 ///  pt. a se putea face rocada si pe layouturi random sau custom.
-pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {
+pub(super) fn rocada(tabla: &Tabla, poz: Pozitie) -> Vec<Mutare> {
     let mut rez = vec![];
-    let rege = tabla.at((i, j)).piesa.clone().unwrap();
+    let rege = tabla.at(poz).piesa.clone().unwrap();
 
     // Daca regele a fost mutat sau e in sah, rocada nu se poate face.
-    if rege.mutat || e_atacat(tabla, (i, j), rege.culoare) {
+    if rege.mutat || sah::e_atacat(tabla, poz, rege.culoare) {
         return rez;
     }
 
     // Cauta rocada intai rocada mare (in dreapta),
     // apoi pe cea mica (in stanga).
     for dtura in [-4, 3] {
+        let jtura = poz.1 as i32 + dtura;
+
         // Daca pozitia turei nu este in tabla, nu are sens cautarea rocadei.
-        if in_board(i as i32, j as i32 + dtura) {
-            if let Some(tura) = tabla.at((i, (j as i32 + dtura) as usize)).piesa.clone() {
+        if input::in_board(poz.0 as i32, jtura) {
+            if let Some(tura) = tabla.at((poz.0, jtura as usize)).piesa.clone() {
                 if tura.culoare == rege.culoare && tura.tip == TipPiesa::Tura && !tura.mutat {
                     let dir = dtura.signum();
                     let mut ok = true;
@@ -72,9 +61,9 @@ pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {
                     // Se cauta ca toate patratele intre rege
                     // si tura sa fie libere si neatacate.
                     for k in 1..dtura.abs() {
-                        let destj = (j as i32 + dir * k) as usize;
-                        if tabla.at((i, destj)).piesa.is_some()
-                            || e_atacat(tabla, (i, destj), rege.culoare)
+                        let destj = (poz.1 as i32 + dir * k) as usize;
+                        if tabla.at((poz.0, destj)).piesa.is_some()
+                            || sah::e_atacat(tabla, (poz.0, destj), rege.culoare)
                         {
                             ok = false;
                             break;
@@ -83,13 +72,17 @@ pub(super) fn rocada(tabla: &Tabla, i: usize, j: usize) -> Vec<Mutare> {
 
                     if ok {
                         rez.push(Mutare {
-                            tip: TipMutare::Rocada((i, (j as i32 + dtura) as usize)),
-                            dest: (i, (j as i32 + dir * 2) as usize),
+                            // In `tip` se va retine pozitia *turei*.
+                            tip: TipMutare::Rocada((poz.0, jtura as usize)),
+                            // In `dest` se va retine destinatia *regelui*
+                            // (la 2 patratele distanta).
+                            dest: (poz.0, (poz.1 as i32 + dir * 2) as usize),
                         });
                     }
                 }
             }
         }
     }
+
     rez
 }

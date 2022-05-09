@@ -4,9 +4,8 @@ use rand::{self, Rng};
 /// Generarea layouturilor tablei de sah.
 impl Tabla {
     /// Genereaza layoutul tablei de sah dupa template.
-    /// (Pt. a fi mai usor de citit (mai ales cand e hardcodat),
-    /// 'template' este un vector de stringuri, fiecare string
-    /// marcand o linie, in loc sa fie un singur string separat de '\n')
+    /// `template` este un vector de stringuri,
+    /// fiecare string marcand o linie.
     pub(crate) fn from(template: [&str; 8]) -> Tabla {
         let mut tabla: MatTabla = Default::default();
 
@@ -36,12 +35,12 @@ impl Tabla {
     /// Genereaza o tabla de sah clasica.
     pub(crate) fn new_clasica() -> Tabla {
         Tabla::from([
-            "rnbqkbnr", "pppppppp", "........", "........", "........", "........", "PPPPPPPP",
-            "RNBQKBNR",
+            "rnbqkbnr", "pppppppp", "", "", "", "", "PPPPPPPP", "RNBQKBNR",
         ])
     }
 
     /// Genereaza o tabla de joc aleatorie
+    /// FIXME: regele sa nu fie in sah cand e generat.
     pub(crate) fn new_random() -> Tabla {
         let mut tabla = MatTabla::default();
         let mut rng = rand::thread_rng();

@@ -1,4 +1,4 @@
-use crate::{tabla::input::in_board, Mutare};
+use crate::{tabla::input, Mutare};
 
 use super::miscari::{get_poz_rege, TipMutare};
 
@@ -34,8 +34,8 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, mutare: &Mutare) -> St
                     // Daca sunt pe aceeasi coloana se va afisa linia
                     if k.1 == src.1 {
                         scrie_lin = true;
-                    // Daca nu, se scrie coloana, indiferent daca sunt pe
-                    // aceeasi linie sau nu (se poate intampla la cai de ex.)
+                        // Daca nu, se scrie coloana, indiferent daca sunt pe
+                        // aceeasi linie sau nu (se poate intampla la cai de ex.)
                     } else {
                         scrie_col = true;
                     }
@@ -86,8 +86,6 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, mutare: &Mutare) -> St
 ///
 /// Rezultatul va fi `Some(poz_piesa, mutare)`
 /// sau `None` (stringul nu este valid).
-///
-/// FIXME: decodingul nu merge pt en passant.
 pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Pozitie, Mutare)> {
     lazy_static! {
         static ref REGX: Regex = Regex::new(REGEXPR).unwrap();
@@ -115,6 +113,7 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
 
             // " e.p." e prezent -> miscarea este en passant.
             if capture.get(7).is_some() {
+                // Doar pionul poate face en passant.
                 if tip_piesa != TipPiesa::Pion {
                     return None;
                 }
@@ -129,20 +128,12 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                     let d_str = discriminant.as_str();
                     let col = d_str.chars().next().unwrap() as u8 - b'a';
 
-                    if in_board(lin, col as i32) {
+                    if input::in_board(lin, col as i32) {
                         let lin = lin as usize;
                         let col = col as usize;
 
-                        if let Some(piesa) = &tabla.at((lin, col)).piesa {
-                            if piesa.tip == TipPiesa::Pion {
-                                return Some((
-                                    (lin, col),
-                                    Mutare {
-                                        tip: TipMutare::EnPassant((lin, pozj)),
-                                        dest: (pozi, pozj),
-                                    },
-                                ));
-                            }
+                        if let Some(mutare) = en_passant_valid(tabla, (pozi, pozj), (lin, col)) {
+                            return Some(((lin, col), mutare));
                         }
                     }
                     return None;
@@ -153,20 +144,12 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                 // trebuie cautat manual.
                 for dir in [-1, 1] {
                     let jpion = pozj as i32 + dir;
-                    if in_board(lin, jpion) {
+                    if input::in_board(lin, jpion) {
                         let lin = lin as usize;
                         let col = jpion as usize;
 
-                        if let Some(piesa) = &tabla.at((lin, col)).piesa {
-                            if piesa.tip == TipPiesa::Pion {
-                                return Some((
-                                    (lin, col),
-                                    Mutare {
-                                        tip: TipMutare::EnPassant((lin, pozj)),
-                                        dest: (pozi, pozj),
-                                    },
-                                ));
-                            }
+                        if let Some(mutare) = en_passant_valid(tabla, (pozi, pozj), (lin, col)) {
+                            return Some(((lin, col), mutare));
                         }
                     }
                 }
@@ -254,7 +237,7 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
             }
             return None;
         }
-    // Rocada mica
+        // Rocada mica
     } else if mov == "O-O" {
         let (i, j) = get_poz_rege(tabla, turn);
 
@@ -265,7 +248,7 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                 dest: (i, j + 2),
             },
         ));
-    // Rocada mare
+        // Rocada mare
     } else if mov == "O-O-O" {
         let (i, j) = get_poz_rege(tabla, turn);
 
@@ -276,6 +259,20 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
                 dest: (i, j - 2),
             },
         ));
+    }
+    None
+}
+
+/// Returneaza `Mutarea`, daca pionul de la `poz`,
+/// mutat la `dest` face en passant, sau `None` daca nu.
+fn en_passant_valid(tabla: &Tabla, poz: Pozitie, dest: Pozitie) -> Option<Mutare> {
+    if let Some(piesa) = &tabla.at(poz).piesa {
+        if piesa.tip == TipPiesa::Pion {
+            return Some(Mutare {
+                tip: TipMutare::EnPassant((poz.0, dest.1)),
+                dest,
+            });
+        }
     }
     None
 }

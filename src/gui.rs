@@ -7,14 +7,7 @@ use ggez::filesystem;
 use ggez_egui::EguiContext;
 
 use crate::{
-    tabla::{
-        editor,
-        game::set_piesa,
-        generare,
-        input::get_dimensiuni_tabla,
-        sah::{in_sah, verif_continua_jocul},
-        Culoare, MatTabla, MatchState, Tabla, TipPiesa,
-    },
+    tabla::{editor, game, generare, input, sah, Culoare, MatTabla, MatchState, Tabla, TipPiesa},
     GameMode, GameState, State,
 };
 
@@ -51,7 +44,7 @@ pub(crate) fn main_menu(state: &mut State, egui_ctx: &EguiContext, ctx: &mut gge
                                     .on_hover_text("click-dreapta pentru a sterge!")
                                     .secondary_clicked()
                                 {
-                                    if let Err(e) = ggez::filesystem::delete(ctx, l) {
+                                    if let Err(e) = filesystem::delete(ctx, l) {
                                         eprintln!("{}", e);
                                     }
 
@@ -194,7 +187,7 @@ pub(crate) fn game(state: &mut State, gui_ctx: &EguiContext, ctx: &ggez::Context
                             let mut culoare = state.turn;
                             culoare.invert();
 
-                            set_piesa(&mut state.tabla, poz, Some(*p), culoare);
+                            game::set_piesa(&mut state.tabla, poz, Some(*p), culoare);
                             let mutare = format!("{}={}", state.mutare_buf, p);
 
                             // Se scrie mutarea
@@ -304,8 +297,10 @@ fn exista_rege(tabla: &MatTabla, culoare: Culoare) -> bool {
     false
 }
 
+/// Construieste un SidePanel pentru afisarea
+/// informatiilor in editor sau in joc.
 fn create_side_panel(ctx: &ggez::Context, id: &str) -> egui::SidePanel {
-    let (_, x_pad, _) = get_dimensiuni_tabla(ctx);
+    let (_, x_pad, _) = input::get_dimensiuni_tabla(ctx);
     let x_pad = x_pad - 20.0;
     egui::SidePanel::left(id)
         .min_width(x_pad)
@@ -313,6 +308,9 @@ fn create_side_panel(ctx: &ggez::Context, id: &str) -> egui::SidePanel {
         .resizable(false)
 }
 
+/// Construieste Tabla din `game_mode`-ul selectat.
+/// Daca `game_mode` e `GameMode::Custom`, se va incarca
+/// layoutul din fisierul selectat.
 fn load_layout(game_mode: &GameMode, ctx: &ggez::Context) -> Tabla {
     match game_mode {
         GameMode::Clasic => Tabla::new_clasica(),
@@ -342,8 +340,8 @@ impl Tabla {
     fn valideaza_layout(&self) -> bool {
         for culoare in [Culoare::Alb, Culoare::Negru] {
             if !exista_rege(&self.mat, culoare)
-                || verif_continua_jocul(self, culoare).is_some()
-                || in_sah(self, culoare)
+                || sah::verif_continua_jocul(self, culoare).is_some()
+                || sah::in_sah(self, culoare)
             {
                 return false;
             }
