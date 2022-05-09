@@ -11,23 +11,23 @@ use super::{
 /// Valorile returnate de `get_dimensiuni_tabla`, pt prescurtare.
 type Dimensiuni = (f32, f32, f32);
 /// Valori RGBA
-type RGBA = (u8, u8, u8, u8);
+type Rgba = (u8, u8, u8, u8);
 /// Valori RGB
-type RGB = (u8, u8, u8);
+type Rgb = (u8, u8, u8);
 
 /// Culoarea patratelor albe.
-const WHITE: RGB = (189, 114, 49);
+const WHITE: Rgb = (189, 114, 49);
 /// Culoarea patratelor negre.
-const BLACK: RGB = (102, 52, 9);
+const BLACK: Rgb = (102, 52, 9);
 /// Culoarea cu care se afiseaza ultima miscare.
-const LAST_MOVE: RGBA = (255, 255, 0, 90);
+const LAST_MOVE: Rgba = (255, 255, 0, 90);
 /// Culoarea cu care se arata ca regele e in sah.
-const CHESS: RGBA = (255, 0, 0, 170);
+const CHESS: Rgba = (255, 0, 0, 170);
 /// Culoarea cerculetelor care 
 /// arata unde se pot muta piesele.
-const MOVE: RGBA = (0, 0, 0, 127);
+const MOVE: Rgba = (0, 0, 0, 127);
 /// Culoarea cu care se arata ca o piesa e selectata.
-const SELECTED: RGBA = (255, 255, 0, 90);
+const SELECTED: Rgba = (255, 255, 0, 90);
 
 /// Deseneaza tabla de joc.
 pub(crate) fn board(ctx: &mut ggez::Context) -> ggez::GameResult {

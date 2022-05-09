@@ -113,8 +113,6 @@ fn your_turn(state: &mut State, pos: Pozitie) {
 /// recalculeaza noile pozitii atacate,
 /// schimba randul jucatorilor si
 /// returneaza notatia algebrica a miscarii
-///
-/// FIXME: face prea multe lucruri
 pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
     // Vechea pozitie a piesei
     let p_old = tabla.at(src).clone();

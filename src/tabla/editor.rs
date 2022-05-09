@@ -13,15 +13,15 @@ pub(crate) fn editor_handler(ctx: &mut ggez::Context, tabla: &mut MatTabla, pies
     // la un click, amplaseaza piesa alba
     if ggez::input::mouse::button_pressed(ctx, MouseButton::Left) {
         // reversed va fi mereu false
-        if let Some((i,j )) = input::get_mouse_square(ctx, false) {
+        if let Some((i, j)) = input::get_mouse_square(ctx, false) {
             place(tabla, i, j, piesa_sel, Culoare::Alb);
         }
-    // la click-dreapta, amplaseaza piesa neagra
+        // la click-dreapta, amplaseaza piesa neagra
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Right) {
         if let Some((i, j)) = input::get_mouse_square(ctx, false) {
             place(tabla, i, j, piesa_sel, Culoare::Negru);
         }
-    // la click pe rotita, sterge pionul
+        // la click pe rotita, sterge pionul
     } else if ggez::input::mouse::button_pressed(ctx, MouseButton::Middle) {
         if let Some((i, j)) = input::get_mouse_square(ctx, false) {
             delete(tabla, i, j);
@@ -40,8 +40,14 @@ pub(crate) fn list_files(ctx: &ggez::Context) -> Vec<String> {
     if let Ok(files) = filesystem::read_dir(ctx, "/") {
         for file in files {
             let file = file.to_str().unwrap();
-            if PATTERN.is_match(file) && layout_valid(ctx, &file.to_owned()) {
-                res.push(file.to_owned());
+
+            if let Some(capture) = PATTERN.captures_iter(file).next() {
+                if let Some(name) = capture.get(1) {
+                    let name = name.as_str().to_string();
+                    if layout_valid(ctx, &name) {
+                        res.push(name);
+                    }
+                }
             }
         }
     }
@@ -69,6 +75,6 @@ fn layout_valid(ctx: &ggez::Context, path: &String) -> bool {
 ///
 /// Returneaza `None` daca fisierul nu poate fi incarcat.
 pub(crate) fn load_file(ctx: &ggez::Context, path: &String) -> Option<MatTabla> {
-    let f = filesystem::open(ctx, path).unwrap();
+    let f = filesystem::open(ctx, &format!("/{}.json", path)).unwrap();
     serde_json::from_reader(f).ok()
 }

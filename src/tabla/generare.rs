@@ -1,4 +1,5 @@
 use super::{miscari, Culoare, MatTabla, Piesa, Tabla, TipPiesa};
+use crate::tabla::sah;
 use rand::{self, Rng};
 
 /// Generarea layouturilor tablei de sah.
@@ -16,7 +17,7 @@ impl Tabla {
                 } else {
                     Culoare::Alb
                 };
-                // FIXME: urat:(
+
                 match c.to_lowercase().to_string().as_str() {
                     "p" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Pion, culoare)),
                     "r" => tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Tura, culoare)),
@@ -40,35 +41,42 @@ impl Tabla {
     }
 
     /// Genereaza o tabla de joc aleatorie
-    /// FIXME: regele sa nu fie in sah cand e generat.
     pub(crate) fn new_random() -> Tabla {
-        let mut tabla = MatTabla::default();
-        let mut rng = rand::thread_rng();
+        loop {
+            let mut tabla = MatTabla::default();
+            let mut rng = rand::thread_rng();
 
-        for i in 0..2 {
-            for j in 0..8 {
-                let tip = rng
-                    .choose(&[
-                        TipPiesa::Pion,
-                        TipPiesa::Tura,
-                        TipPiesa::Nebun,
-                        TipPiesa::Cal,
-                        TipPiesa::Regina,
-                    ])
-                    .unwrap();
+            for i in 0..2 {
+                for j in 0..8 {
+                    let tip = rng
+                        .choose(&[
+                            TipPiesa::Pion,
+                            TipPiesa::Tura,
+                            TipPiesa::Nebun,
+                            TipPiesa::Cal,
+                            TipPiesa::Regina,
+                        ])
+                        .unwrap();
 
-                tabla[i][j].piesa = Some(Piesa::new(*tip, Culoare::Negru));
-                tabla[7 - i][j].piesa = Some(Piesa::new(*tip, Culoare::Alb));
+                    tabla[i][j].piesa = Some(Piesa::new(*tip, Culoare::Negru));
+                    tabla[7 - i][j].piesa = Some(Piesa::new(*tip, Culoare::Alb));
+                }
+            }
+
+            // Amplaseaza regele la final ca sa existe doar unul
+            let i = rng.gen_range(0, 2);
+            let j = rng.gen_range(0, 8);
+            tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Negru));
+            tabla[7 - i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Alb));
+
+            let tabla = Tabla::from_layout(tabla);
+
+            // Daca un rege nu este in sah, nici celalalt nu va fi,
+            // piesele fiind simetrice.
+            if !sah::in_sah(&tabla, Culoare::Alb) {
+                return tabla;
             }
         }
-
-        // Amplaseaza regele la final ca sa existe doar unul
-        let i = rng.gen_range(0, 2);
-        let j = rng.gen_range(0, 8);
-        tabla[i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Negru));
-        tabla[7 - i][j].piesa = Some(Piesa::new(TipPiesa::Rege, Culoare::Alb));
-
-        Tabla::from_layout(tabla)
     }
 
     /// Genereaza o [Tabla] initializata dintr-o [MatTabla].

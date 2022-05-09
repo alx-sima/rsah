@@ -259,13 +259,11 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                 if state.tabla.valideaza_layout() {
                     let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
 
-                    let path = format!("/{}.json", state.ed_save_name);
-
-                    let mut f = filesystem::create(ctx, path.clone()).unwrap();
+                    let mut f = filesystem::create(ctx, &format!("/{}.json", state.ed_save_name)).unwrap();
                     f.write_all(rez.as_bytes()).unwrap();
 
                     state.game_state = GameState::MainMenu;
-                    state.game_mode = GameMode::Custom(path);
+                    state.game_mode = GameMode::Custom(state.ed_save_name.clone());
                 } else {
                     for i in 0..8 {
                         for j in 0..8 {

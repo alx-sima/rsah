@@ -95,7 +95,6 @@ pub(crate) fn decode_move(tabla: &Tabla, mov: &str, turn: Culoare) -> Option<(Po
     // nu va returna mai multe (e intre /^/ si /$/).
     if let Some(capture) = REGX.captures_iter(mov).next() {
         if let (Some(j), Some(i)) = (capture.get(4), capture.get(5)) {
-            // FIXME: urat:(
             let pozi = 8 - str::parse::<usize>(i.as_str()).unwrap();
             let pozj = (j.as_str().chars().last().unwrap() as u8 - b'a') as usize;
 
