@@ -42,7 +42,7 @@ pub(super) fn rocada(tabla: &Tabla, poz: Pozitie) -> Vec<Mutare> {
     let rege = tabla.at(poz).piesa.clone().unwrap();
 
     // Daca regele a fost mutat sau e in sah, rocada nu se poate face.
-    if rege.mutat || sah::e_atacat(tabla, poz, rege.culoare) {
+    if rege.mutat || sah::in_sah(tabla, rege.culoare) {
         return rez;
     }
 

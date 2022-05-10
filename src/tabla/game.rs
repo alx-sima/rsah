@@ -216,7 +216,7 @@ pub(crate) fn muta(tabla: &mut Tabla, src: Pozitie, mutare: &Mutare) -> String {
 /// resetand celulele influentate.
 ///
 /// Nu verifica rocade sau en passant, fiind
-/// intentionata doar pt promovarea pionului.
+/// intentionata pt promovarea pionului.
 pub(crate) fn set_piesa(
     tabla: &mut Tabla,
     poz: Pozitie,

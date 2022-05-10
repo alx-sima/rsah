@@ -33,7 +33,7 @@ pub(crate) fn editor_handler(ctx: &mut ggez::Context, tabla: &mut MatTabla, pies
 /// din filesistem care contin un layout valid.
 pub(crate) fn list_files(ctx: &ggez::Context) -> Vec<String> {
     lazy_static! {
-        static ref PATTERN: Regex = Regex::new(r"(.*)\.json$").unwrap();
+        static ref PATTERN: Regex = Regex::new(r"/(.*)\.json$").unwrap();
     };
     let mut res = vec![];
 

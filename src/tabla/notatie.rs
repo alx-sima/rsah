@@ -52,9 +52,11 @@ pub(crate) fn encode_move(tabla: &MatTabla, src: Pozitie, mutare: &Mutare) -> St
         // Pionul `victima` este la mijlocul dintre
         // pionul `src` si potentialul pion cautat.
         let j_celalalt_pion = 2 * jpion - src.1;
-        if let Some(piesa) = &tabla[src.0][j_celalalt_pion].piesa {
-            if piesa.tip == TipPiesa::Pion && piesa.culoare == p_old.culoare {
-                scrie_col = true;
+        if input::in_board(src.0 as i32, j_celalalt_pion as i32) {
+            if let Some(piesa) = &tabla[src.0][j_celalalt_pion].piesa {
+                if piesa.tip == TipPiesa::Pion && piesa.culoare == p_old.culoare {
+                    scrie_col = true;
+                }
             }
         }
     }

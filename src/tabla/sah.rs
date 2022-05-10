@@ -27,12 +27,18 @@ pub(crate) fn in_sah(tabla: &Tabla, culoare: Culoare) -> bool {
     e_atacat(tabla, poz_rege, culoare)
 }
 
-/// Verifica daca patratul de pe `poz` este atacat de cealalta culoare.
+/// Verifica daca patratul de pe `poz` este atacat de cealalta `culoare`.
 pub(crate) fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
+    // Patratul `poz` e atacat daca exista
+    // un patrat in vectorul `atacat` cu o
+    // piesa de o culoare diferita.
     tabla.at(poz).atacat.iter().any(|x| {
         if let Some(piesa) = tabla.at(*x).piesa.clone() {
             return piesa.culoare != culoare;
         }
+
+        // Patratele goale nu ar trebui
+        // sa atace niciun alt patrat.
         unreachable!()
     })
 }
@@ -44,7 +50,7 @@ pub(crate) fn e_atacat(tabla: &Tabla, poz: Pozitie, culoare: Culoare) -> bool {
 /// iar acestia sunt pe aceeasi culoare, e pat.
 fn sunt_piese_destule(tabla: &Tabla) -> bool {
     let mut cai = vec![];
-    let mut crazys = vec![];
+    let mut nebuni = vec![];
 
     // Se numara piesele ramase.
     for i in 0..8 {
@@ -57,7 +63,7 @@ fn sunt_piese_destule(tabla: &Tabla) -> bool {
                         return true;
                     }
                     TipPiesa::Cal => cai.push((i, j)),
-                    TipPiesa::Nebun => crazys.push((i, j)),
+                    TipPiesa::Nebun => nebuni.push((i, j)),
                     TipPiesa::Rege => {}
                 }
             }
@@ -65,18 +71,18 @@ fn sunt_piese_destule(tabla: &Tabla) -> bool {
     }
 
     // Daca mai exista doar un cal/nebun, nu se poate da mat.
-    if crazys.len() + cai.len() <= 1 {
+    if nebuni.len() + cai.len() <= 1 {
         return false;
     }
 
     // Cazul in care fiecare jucator are doar cate un
     // nebun iar acestia se afla pe aceeasi culoare,
     // caz in care nu se poate da mat.
-    if cai.is_empty() && crazys.len() == 2 {
+    if cai.is_empty() && nebuni.len() == 2 {
         // Daca nebunii se afla pe culori diferite,
         // suma paritatilor coordonatelor va fi 1,
         // caz in care se poate da mat.
-        return crazys.iter().map(|(i, j)| (i + j) % 2).sum::<usize>() == 1;
+        return nebuni.iter().map(|(i, j)| (i + j) % 2).sum::<usize>() == 1;
     }
     true
 }
