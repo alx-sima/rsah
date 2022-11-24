@@ -259,7 +259,8 @@ pub(crate) fn editor(state: &mut State, egui_ctx: &EguiContext, ctx: &mut ggez::
                 if state.tabla.valideaza_layout() {
                     let rez = serde_json::to_string_pretty(&state.tabla.mat).unwrap();
 
-                    let mut f = filesystem::create(ctx, &format!("/{}.json", state.ed_save_name)).unwrap();
+                    let mut f =
+                        filesystem::create(ctx, &format!("/{}.json", state.ed_save_name)).unwrap();
                     f.write_all(rez.as_bytes()).unwrap();
 
                     state.game_state = GameState::MainMenu;
